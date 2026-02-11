@@ -1,0 +1,70 @@
+[
+  {
+    "id": 1,
+    "name": "Ivory Silk Blend Saree",
+    "price": 3499,
+    "image": "https://images.unsplash.com/photo-1679006831648-7c9ea12e5807?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "description": "An elegant ivory saree crafted in a soft silk blend, ideal for festive gatherings and refined celebrations."
+  },
+  {
+    "id": 2,
+    "name": "Classic Cotton Daily Wear Saree",
+    "price": 1799,
+    "image": "https://images.unsplash.com/photo-1714236856260-66606362af13?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "description": "Lightweight cotton saree designed for all-day comfort, perfect for daily wear with a timeless appeal."
+  },
+  {
+    "id": 3,
+    "name": "Royal Blue Banarasi Inspired Saree",
+    "price": 5499,
+    "image": "https://images.unsplash.com/photo-1678705730064-a7ecbab4b3fb?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "description": "A regal Banarasi-inspired saree featuring rich motifs and a graceful drape, ideal for weddings and festive occasions."
+  },
+  {
+    "id": 4,
+    "name": "Soft Pastel Georgette Saree",
+    "price": 2999,
+    "image": "https://images.unsplash.com/photo-1732709470611-670308da8c5e?q=80&w=880&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "description": "Flowing georgette saree in soft pastel tones, designed for effortless elegance at daytime events."
+  },
+  {
+    "id": 5,
+    "name": "Handloom Cotton Saree",
+    "price": 2499,
+    "image": "https://images.unsplash.com/photo-1756483492198-8ca91227489b?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "description": "Authentic handloom cotton saree celebrating traditional weaving techniques and breathable comfort."
+  },
+  {
+    "id": 6,
+    "name": "Festive Red Art Silk Saree",
+    "price": 3999,
+    "image": "https://images.unsplash.com/photo-1619516388835-2b60acc4049e?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "description": "A vibrant red art silk saree crafted for festive evenings and special celebrations."
+  },
+  {
+    "id": 7,
+    "name": "Minimal Beige Linen Saree",
+    "price": 2899,
+    "image": "https://images.unsplash.com/photo-1727430228383-aa1fb59db8bf?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "description": "A breathable linen saree with a minimal aesthetic, perfect for modern everyday elegance."
+  },
+  {
+    "id": 8,
+    "name": "Emerald Green Festive Saree",
+    "price": 4799,
+    "image": "https://images.unsplash.com/photo-1696233473130-cf169462a52d?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "description": "Rich emerald green saree designed to make a statement during festive celebrations."
+  },
+  {
+    "id": 9,
+    "name": "Emerald Ethnic Festive Saree",
+    "price": 7799,
+    "image": "https://images.unsplash.com/photo-1607647735186-f3c200aa175a?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "description": "Rich emerald ethnoc saree designed to make a statement during festive celebrations."
+  }
+
+]
+
+
+
+
