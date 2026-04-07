@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { authFetch } from "@/lib/authFetch";
+import { getBrowserApiBase } from "@/lib/publicApiBase";
 import {
   normalizeOrderStatus,
   orderPipelineIndex,
@@ -92,7 +93,7 @@ export default function OrdersPage() {
     setError(null);
     try {
       const res = await authFetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/customer/order?page=1&limit=20`
+        `${getBrowserApiBase()}/customer/order?page=1&limit=20`
       );
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json.success) {

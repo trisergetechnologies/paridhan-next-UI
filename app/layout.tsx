@@ -1,5 +1,3 @@
-import Footer from "@/components/layout/Footer";
-import Header from "@/components/layout/Header";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import { ToastProvider } from "@/context/ToastContext";
@@ -37,17 +35,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${fontSans.variable} ${fontSerif.variable}`}>
-      <body
-        className={`${fontSans.className} antialiased flex flex-col min-h-screen`}
-      >
+      <body className={`${fontSans.className} antialiased flex flex-col min-h-screen`}>
         <ToastProvider>
           <AuthProvider>
             <WishlistProvider>
-              <CartProvider>
-                <Header />
-                <main className="grow">{children}</main>
-                <Footer />
-              </CartProvider>
+              <CartProvider>{children}</CartProvider>
             </WishlistProvider>
           </AuthProvider>
         </ToastProvider>

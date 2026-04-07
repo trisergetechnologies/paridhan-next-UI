@@ -1,6 +1,8 @@
 "use client";
 
+import { EmptyState } from "@/components/ui/EmptyState";
 import { dedupeByPublicId } from "@/lib/dedupeByPublicId";
+import { getBrowserApiBase } from "@/lib/publicApiBase";
 import axios from "axios";
 import { useEffect, useState } from "react";
 import ProductCard from "./ProductCard";
@@ -27,34 +29,71 @@ type ListProduct = {
 
 export default function NewArrivals() {
   const [products, setProducts] = useState<ListProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     const fetchNewArrivals = async () => {
+      setLoading(true);
+      setError(false);
       try {
-        const res = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/public/products?page=1&limit=10`
-        );
+        const res = await axios.get(`${getBrowserApiBase()}/public/products?page=1&limit=10`);
         const items = dedupeByPublicId(res.data?.data?.items || []) as ListProduct[];
         setProducts(items);
-      } catch (error) {
-        console.error("Failed to fetch new arrivals", error);
+      } catch {
         setProducts([]);
+        setError(true);
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchNewArrivals();
+    void fetchNewArrivals();
   }, []);
+
+  if (loading) {
+    return (
+      <section id="new-arrivals" className="scroll-mt-24 py-14">
+        <div className="mx-auto max-w-7xl px-4 lg:px-8">
+          <div className="mb-6 h-8 w-48 animate-pulse rounded-md bg-muted" />
+          <div className="h-4 w-72 max-w-full animate-pulse rounded-md bg-muted/70" />
+          <div className="mt-8 flex gap-5 overflow-hidden">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-[380px] w-[min(100%,280px)] shrink-0 animate-pulse rounded-xl bg-muted" />
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (error || products.length === 0) {
+    return (
+      <section id="new-arrivals" className="scroll-mt-24 py-14">
+        <div className="mx-auto max-w-7xl px-4 lg:px-8">
+          <div className="mb-6">
+            <h2 className="font-serif text-2xl font-semibold lg:text-3xl">New arrivals</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Latest listings from our store</p>
+          </div>
+          <EmptyState
+            title={error ? "Couldn’t load new arrivals" : "No products yet"}
+            description={
+              error
+                ? "Something went wrong while loading this section. Please try refreshing the page."
+                : "Once sellers add products to the catalog, they will show up here."
+            }
+          />
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section id="new-arrivals" className="scroll-mt-24 py-14">
-      <div className="max-w-7xl mx-auto px-4 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 lg:px-8">
         <div className="mb-6">
-          <h2 className="text-2xl lg:text-3xl font-semibold font-serif">
-            New Arrivals
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Handpicked silks, freshly added to our collection
-          </p>
+          <h2 className="font-serif text-2xl font-semibold lg:text-3xl">New arrivals</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Latest listings from our store</p>
         </div>
 
         <div
@@ -66,7 +105,7 @@ export default function NewArrivals() {
           {products.map((product, index) => (
             <div
               key={product.publicId}
-              className="snap-center shrink-0 w-[min(100%,280px)] sm:w-[260px] md:w-[272px] lg:w-[280px]"
+              className="w-[min(100%,280px)] shrink-0 snap-center sm:w-[260px] md:w-[272px] lg:w-[280px]"
             >
               <ProductCard
                 product={{
@@ -83,8 +122,7 @@ export default function NewArrivals() {
                   image: product.images?.[0]?.url || "",
                   images: product.images,
                   isFeatured: product.isFeatured,
-                  sectionBadge:
-                    index === 0 ? "new" : index === 1 ? "exclusive" : undefined,
+                  sectionBadge: index === 0 ? "new" : index === 1 ? "exclusive" : undefined,
                 }}
               />
             </div>

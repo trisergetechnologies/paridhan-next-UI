@@ -18,7 +18,7 @@ export type PublicHeroResponse = {
   } | null;
 };
 
-/** Path under NEXT_PUBLIC_API_URL (which already includes `/api/v1`). */
+/** Path under the resolved public API base (includes `/api/v1`). */
 export const PUBLIC_HERO_PATH = "/public/hero";
 
 function isHeroSlide(x: unknown): x is HeroSlideItem {

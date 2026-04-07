@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/context/AuthContext";
 import { authFetch } from "@/lib/authFetch";
+import { getBrowserApiBase } from "@/lib/publicApiBase";
 import { cartLineId, parseCartLineId } from "@/lib/cartLineId";
 import { useToast } from "./ToastContext";
 import React, { createContext, useContext, useEffect, useState } from "react";
@@ -95,7 +96,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   /* ================= BACKEND FETCH ================= */
   const fetchCartFromBackend = async () => {
     try {
-      const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/customer/cart`);
+      const res = await authFetch(`${getBrowserApiBase()}/customer/cart`);
       if (!res.ok) {
         setCartError(`Failed to fetch cart (${res.status})`);
         return;
@@ -130,7 +131,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         const items: CartItem[] = JSON.parse(savedCart);
         for (const item of items) {
-          const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/customer/cart`, {
+          const res = await authFetch(`${getBrowserApiBase()}/customer/cart`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -188,7 +189,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     try {
-      const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/customer/cart`, {
+      const res = await authFetch(`${getBrowserApiBase()}/customer/cart`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -234,7 +235,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
     try {
       const res = await authFetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/customer/cart/${encodeURIComponent(productId)}${qs}`,
+        `${getBrowserApiBase()}/customer/cart/${encodeURIComponent(productId)}${qs}`,
         {
           method: "DELETE",
         }
@@ -267,7 +268,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     try {
-      const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/customer/cart`, {
+      const res = await authFetch(`${getBrowserApiBase()}/customer/cart`, {
         method: "DELETE",
       });
       const json = await res.json();
@@ -302,7 +303,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     try {
-      const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/customer/cart`, {
+      const res = await authFetch(`${getBrowserApiBase()}/customer/cart`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

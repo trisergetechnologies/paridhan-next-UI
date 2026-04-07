@@ -18,7 +18,8 @@ import {
   Shield,
 } from "lucide-react";
 import { submitContactMessage } from "@/lib/contactApi";
-import { useState } from "react";
+import Link from "next/link";
+import { useMemo, useState } from "react";
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -63,48 +64,72 @@ export default function Contact() {
     window.setTimeout(() => setIsSubmitted(false), 4000);
   };
 
-  const contactInfo = [
-    {
-      icon: Mail,
-      title: "Email Us",
-      details: ["hello@bloomshop.com", "support@bloomshop.com"],
-      description: "Send us an email anytime",
-    },
-    {
-      icon: Phone,
-      title: "Call Us",
-      details: ["+1 (555) 123-4567", "+1 (555) 987-6543"],
-      description: "Mon-Fri from 8am to 5pm",
-    },
-    {
-      icon: MapPin,
-      title: "Visit Us",
-      details: ["123 Fashion Street", "Style City, SC 12345"],
-      description: "Come say hello at our office",
-    },
-    {
-      icon: Clock,
-      title: "Working Hours",
-      details: ["Monday - Friday: 9am - 6pm", "Saturday: 10am - 4pm"],
-      description: "Sunday: Closed",
-    },
-  ];
+  const contactInfo = useMemo(() => {
+    type Block = {
+      icon: typeof Mail;
+      title: string;
+      details: string[];
+      description: string;
+    };
+    const blocks: Block[] = [];
+    const emails =
+      process.env.NEXT_PUBLIC_CONTACT_EMAIL?.split(/[,;]/).map((s) => s.trim()).filter(Boolean) ?? [];
+    if (emails.length) {
+      blocks.push({
+        icon: Mail,
+        title: "Email",
+        details: emails,
+        description: "We respond as soon as we can.",
+      });
+    }
+    const phones =
+      process.env.NEXT_PUBLIC_CONTACT_PHONE?.split(/[,;]/).map((s) => s.trim()).filter(Boolean) ?? [];
+    if (phones.length) {
+      blocks.push({
+        icon: Phone,
+        title: "Phone",
+        details: phones,
+        description: "",
+      });
+    }
+    const addr =
+      process.env.NEXT_PUBLIC_CONTACT_ADDRESS?.split("|").map((s) => s.trim()).filter(Boolean) ?? [];
+    if (addr.length) {
+      blocks.push({
+        icon: MapPin,
+        title: "Address",
+        details: addr,
+        description: "",
+      });
+    }
+    const hours =
+      process.env.NEXT_PUBLIC_CONTACT_HOURS?.split("|").map((s) => s.trim()).filter(Boolean) ?? [];
+    if (hours.length) {
+      blocks.push({
+        icon: Clock,
+        title: "Hours",
+        details: hours,
+        description: "",
+      });
+    }
+    return blocks;
+  }, []);
 
   const features = [
     {
-      icon: Headphones,
-      title: "24/7 Support",
-      description: "Get help whenever you need it",
-    },
-    {
       icon: MessageSquare,
-      title: "Quick Response",
-      description: "We reply within 2 hours",
+      title: "Write to us",
+      description: "Use the form — we read every message.",
     },
     {
       icon: Shield,
-      title: "Secure & Private",
-      description: "Your information is safe with us",
+      title: "Privacy",
+      description: "Your details are used only to respond to you.",
+    },
+    {
+      icon: Headphones,
+      title: "Policies",
+      description: "Shipping, returns, and more are in our policy pages.",
     },
   ];
 
@@ -268,29 +293,32 @@ export default function Contact() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {contactInfo.map((info, index) => (
-                    <div key={index} className="flex items-start gap-4">
-                      <div className="p-2 bg-primary/10 rounded-lg">
-                        <info.icon className="h-5 w-5 text-primary" />
+                  {contactInfo.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Contact details are not configured. Use the form — we&apos;ll reach you at the email you provide.
+                      You can set <span className="font-mono text-xs">NEXT_PUBLIC_CONTACT_*</span> in your environment
+                      to show phone and address here.
+                    </p>
+                  ) : (
+                    contactInfo.map((info, index) => (
+                      <div key={index} className="flex items-start gap-4">
+                        <div className="rounded-lg bg-primary/10 p-2">
+                          <info.icon className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="mb-1 font-semibold text-foreground">{info.title}</h3>
+                          {info.details.map((detail, idx) => (
+                            <p key={idx} className="text-sm text-muted-foreground">
+                              {detail}
+                            </p>
+                          ))}
+                          {info.description ? (
+                            <p className="mt-1 text-xs text-muted-foreground">{info.description}</p>
+                          ) : null}
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-foreground mb-1">
-                          {info.title}
-                        </h3>
-                        {info.details.map((detail, idx) => (
-                          <p
-                            key={idx}
-                            className="text-sm text-muted-foreground"
-                          >
-                            {detail}
-                          </p>
-                        ))}
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {info.description}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </CardContent>
               </Card>
 
@@ -328,50 +356,31 @@ export default function Contact() {
         </div>
       </section>
 
-      <section className="py-16 lg:py-24 bg-muted/30">
+      <section className="bg-muted/30 py-16 lg:py-24">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
+          <div className="mb-12 text-center">
             <Badge variant="outline" className="mb-6">
-              FAQ
+              Help
             </Badge>
-            <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-4">
-              Frequently Asked Questions
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Find quick answers to common questions about our products and
-              services.
+            <h2 className="mb-4 text-3xl font-bold text-foreground lg:text-4xl">Policies & help</h2>
+            <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
+              Answers to shipping, returns, and legal questions are kept up to date on our policy pages.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          <div className="mx-auto grid max-w-4xl gap-4 md:grid-cols-2">
             {[
-              {
-                question: "What are your shipping policies?",
-                answer:
-                  "We offer free shipping on orders over ₹50. Standard shipping takes 3-5 business days.",
-              },
-              {
-                question: "How can I track my order?",
-                answer:
-                  "Once your order ships, you'll receive a tracking number via email to monitor your package.",
-              },
-              {
-                question: "What is your return policy?",
-                answer:
-                  "We accept returns within 30 days of purchase. Items must be in original condition.",
-              },
-              {
-                question: "Do you offer international shipping?",
-                answer:
-                  "Yes, we ship worldwide. International shipping rates vary by destination.",
-              },
-            ].map((faq, index) => (
-              <Card key={index} className="hover:shadow-md transition-shadow">
+              { href: "/policy/privacy-policy", title: "Privacy policy", desc: "How we handle your data." },
+              { href: "/policy/exchange-policy", title: "Exchange policy", desc: "Returns and exchanges." },
+              { href: "/policy/terms-conditions", title: "Terms & conditions", desc: "Using our store." },
+              { href: "/policy/cancellation-refund", title: "Cancellation & refunds", desc: "Orders and refunds." },
+            ].map((row) => (
+              <Card key={row.href} className="transition-shadow hover:shadow-md">
                 <CardContent className="p-6">
-                  <h3 className="font-semibold text-foreground mb-3">
-                    {faq.question}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">{faq.answer}</p>
+                  <Link href={row.href} className="group block">
+                    <h3 className="mb-2 font-semibold text-foreground group-hover:text-primary">{row.title}</h3>
+                    <p className="text-sm text-muted-foreground">{row.desc}</p>
+                  </Link>
                 </CardContent>
               </Card>
             ))}
@@ -381,28 +390,27 @@ export default function Contact() {
 
       <section className="py-16 lg:py-24">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <Card className="bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20">
+          <Card className="border-primary/20 bg-gradient-to-r from-primary/10 to-accent/10">
             <CardContent className="p-12 text-center">
-              <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-4">
-                Still have questions?
-              </h2>
-              <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-                Can&apos;t find what you&apos;re looking for? Our customer
-                support team is here to help.
+              <h2 className="mb-4 text-3xl font-bold text-foreground lg:text-4xl">Still have questions?</h2>
+              <p className="mx-auto mb-8 max-w-2xl text-lg text-muted-foreground">
+                Send a message using the form above, or read our policies for shipping and returns.
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button
-                  size="lg"
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
-                >
-                  <Phone className="h-4 w-4 mr-2" />
-                  Call Us Now
-                </Button>
-
-                <Button size="lg" variant="outline">
-                  <Mail className="h-4 w-4 mr-2" />
-                  Live Chat
+              <div className="flex flex-col justify-center gap-4 sm:flex-row">
+                {process.env.NEXT_PUBLIC_CONTACT_EMAIL ? (
+                  <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90" asChild>
+                    <a href={`mailto:${process.env.NEXT_PUBLIC_CONTACT_EMAIL.split(",")[0].trim()}`}>
+                      <Mail className="mr-2 h-4 w-4" />
+                      Email us
+                    </a>
+                  </Button>
+                ) : null}
+                <Button size="lg" variant="outline" asChild>
+                  <Link href="/policy">
+                    <Shield className="mr-2 h-4 w-4" />
+                    View policies
+                  </Link>
                 </Button>
               </div>
             </CardContent>

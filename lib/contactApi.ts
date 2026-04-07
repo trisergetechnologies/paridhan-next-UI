@@ -1,3 +1,4 @@
+import { getBrowserApiBase } from "@/lib/publicApiBase";
 import axios from "axios";
 
 export const PUBLIC_CONTACT_PATH = "/public/contact";
@@ -18,7 +19,7 @@ export type ContactApiResponse = {
 export async function submitContactMessage(
   payload: ContactPayload
 ): Promise<ContactApiResponse> {
-  const base = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
+  const base = getBrowserApiBase();
   if (!base) {
     return {
       success: false,

@@ -3,6 +3,7 @@
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { authFetch } from "@/lib/authFetch";
+import { getBrowserApiBase } from "@/lib/publicApiBase";
 import {
   createContext,
   useCallback,
@@ -71,7 +72,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       const res = await authFetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/user/wishlist`,
+        `${getBrowserApiBase()}/user/wishlist`,
         { method: "GET", headers: { "Content-Type": "application/json" } }
       );
       const json = await res.json().catch(() => ({}));
@@ -112,7 +113,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
         const listed = publicIdSet.has(publicId);
         if (listed) {
           const res = await authFetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/user/wishlist/remove/${encodeURIComponent(publicId)}`,
+            `${getBrowserApiBase()}/user/wishlist/remove/${encodeURIComponent(publicId)}`,
             { method: "DELETE" }
           );
           const json = await res.json().catch(() => ({}));
@@ -122,7 +123,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
           }
         } else {
           const res = await authFetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/user/wishlist/add`,
+            `${getBrowserApiBase()}/user/wishlist/add`,
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },

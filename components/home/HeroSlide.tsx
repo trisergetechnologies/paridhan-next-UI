@@ -58,7 +58,7 @@ export default function HeroSlide({ slide, slideIndex, totalSlides }: Props) {
         />
 
         {/* Top editorial bar */}
-        <div className="absolute inset-x-0 top-0 z-10 border-b border-white/10 bg-black/20 backdrop-blur-sm">
+        {/* <div className="absolute inset-x-0 top-0 z-10 border-b border-white/10 bg-black/20 backdrop-blur-sm">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
             <Link
               href="/"
@@ -82,7 +82,7 @@ export default function HeroSlide({ slide, slideIndex, totalSlides }: Props) {
               <span className="w-8" aria-hidden />
             )}
           </div>
-        </div>
+        </div> */}
 
         {/* Content */}
         <div className="absolute inset-0 z-10 flex flex-col justify-end">

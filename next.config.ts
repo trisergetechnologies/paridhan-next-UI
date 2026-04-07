@@ -1,6 +1,20 @@
 import type { NextConfig } from "next";
 
+const apiProxyTarget = (
+  process.env.API_PROXY_TARGET ||
+  process.env.BACKEND_URL ||
+  "http://127.0.0.1:5000"
+).replace(/\/$/, "");
+
 const nextConfig: NextConfig = {
+  async rewrites() {
+    return [
+      {
+        source: "/api/v1/:path*",
+        destination: `${apiProxyTarget}/api/v1/:path*`,
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {
@@ -18,6 +32,10 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "picsum.photos",
+      },
+      {
+        protocol: "https",
+        hostname: "ik.imagekit.io",
       },
     ],
   },

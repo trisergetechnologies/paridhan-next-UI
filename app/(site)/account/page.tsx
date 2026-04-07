@@ -1,6 +1,7 @@
 "use client";
 
 import { authFetch } from "@/lib/authFetch";
+import { getBrowserApiBase } from "@/lib/publicApiBase";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -65,7 +66,7 @@ export default function AccountPage() {
   const fetchAddresses = async () => {
     try {
       setLoadingAddresses(true);
-      const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/customer/address`);
+      const res = await authFetch(`${getBrowserApiBase()}/customer/address`);
       const json = await res.json();
       if (!res.ok || !json.success) {
         setAddressError(json.message || "Failed to fetch addresses");
@@ -116,8 +117,8 @@ export default function AccountPage() {
       setSavingAddress(true);
       const isEdit = Boolean(editingSlug);
       const endpoint = isEdit
-        ? `${process.env.NEXT_PUBLIC_API_URL}/customer/address/${editingSlug}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/customer/address`;
+        ? `${getBrowserApiBase()}/customer/address/${editingSlug}`
+        : `${getBrowserApiBase()}/customer/address`;
       const method = isEdit ? "PUT" : "POST";
 
       const res = await authFetch(endpoint, {
@@ -146,7 +147,7 @@ export default function AccountPage() {
   const setDefaultAddress = async (slug: string) => {
     try {
       const res = await authFetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/customer/address/${slug}/default`,
+        `${getBrowserApiBase()}/customer/address/${slug}/default`,
         { method: "PATCH" }
       );
       const json = await res.json();
@@ -164,7 +165,7 @@ export default function AccountPage() {
 
   const deleteAddress = async (slug: string) => {
     try {
-      const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/customer/address/${slug}`, {
+      const res = await authFetch(`${getBrowserApiBase()}/customer/address/${slug}`, {
         method: "DELETE",
       });
       const json = await res.json();

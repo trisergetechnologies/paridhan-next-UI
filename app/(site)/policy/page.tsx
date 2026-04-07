@@ -30,6 +30,8 @@ const policies = [
   },
 ];
 
+const cubicOut: [number, number, number, number] = [0.16, 1, 0.3, 1];
+
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
   visible: (i: number) => ({
@@ -38,7 +40,7 @@ const fadeUp = {
     transition: {
       delay: i * 0.08,
       duration: 0.45,
-      ease: [0.16, 1, 0.3, 1],
+      ease: cubicOut,
     },
   }),
 };
@@ -51,7 +53,7 @@ export default function PolicyPage() {
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.5, ease: cubicOut }}
           className="text-center mb-16"
         >
           <h1 className="font-serif text-4xl md:text-5xl text-foreground mb-4">

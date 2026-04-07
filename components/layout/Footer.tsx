@@ -10,139 +10,135 @@ import {
   Phone,
   Twitter,
 } from "lucide-react";
+import { getBrowserApiBase } from "@/lib/publicApiBase";
+import axios from "axios";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Separator } from "../ui/separator";
 
+type CategoryItem = { _id: string; name: string; slug: string };
+
 export default function Footer() {
   const [email, setEmail] = useState("");
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
+
+  useEffect(() => {
+    const base = getBrowserApiBase();
+    if (!base) return;
+    axios
+      .get(`${base}/public/categories`)
+      .then((res) => {
+        const items = res.data?.data?.items;
+        if (Array.isArray(items)) setCategories(items);
+      })
+      .catch(() => setCategories([]));
+  }, []);
 
   const handleNewsletterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (email) {
-      console.log("Newsletter subscription:", email);
       setEmail("");
     }
   };
 
-  const footerSections = [
-    {
-      title: "Shop",
-      links: [
-        { href: "/", label: "Sarees" },
-        { href: "/", label: "Daily Wear" },
-        { href: "/", label: "Festive Collection" },
-        { href: "/", label: "New Arrivals" },
-      ],
-    },
-    {
-      title: "Customer Care",
-      links: [
-        { href: "/contact", label: "Contact Us" },
-        { href: "/policy", label: "Shipping Information" },
-        { href: "/policy/exchange-policy", label: "Returns & Exchanges" },
-        { href: "/contact", label: "FAQs" },
-      ],
-    },
-    {
-      title: "Company",
-      links: [
-        { href: "/about", label: "About Paridhan" },
-        { href: "/about", label: "Our Story" },
-      ],
-    },
-    {
-      title: "Legal",
-      links: [
-        { href: "/policy/privacy-policy", label: "Privacy Policy" },
-        { href: "/policy/terms-conditions", label: "Terms & Conditions" },
-        { href: "/policy/cancellation-refund", label: "Refund Policy" },
-      ],
-    },
-  ];
+  const contactLines = useMemo(() => {
+    const addr = process.env.NEXT_PUBLIC_CONTACT_ADDRESS?.split("|").map((s) => s.trim()).filter(Boolean) ?? [];
+    const phone = process.env.NEXT_PUBLIC_CONTACT_PHONE?.trim();
+    const mail = process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim();
+    return { addr, phone, mail };
+  }, []);
 
   const socialLinks = [
-    { href: "#", icon: Facebook, label: "Facebook" },
-    { href: "#", icon: Instagram, label: "Instagram" },
-    { href: "#", icon: Twitter, label: "Twitter" },
+    { href: process.env.NEXT_PUBLIC_SOCIAL_FACEBOOK || "#", icon: Facebook, label: "Facebook" },
+    { href: process.env.NEXT_PUBLIC_SOCIAL_INSTAGRAM || "#", icon: Instagram, label: "Instagram" },
+    { href: process.env.NEXT_PUBLIC_SOCIAL_TWITTER || "#", icon: Twitter, label: "Twitter" },
   ];
 
   return (
-    <footer className="bg-background border-t border-border">
+    <footer className="border-t border-border bg-background">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Newsletter */}
-        <div className="py-14 border-b border-border">
-          <div className="max-w-2xl mx-auto text-center">
-            <h3 className="text-2xl font-semibold text-foreground mb-3">
-              Timeless Style, Delivered
-            </h3>
-            <p className="text-muted-foreground mb-6">
-              Be the first to discover new collections, festive edits, and
-              exclusive releases from Paridhan Emporium.
+        <div className="border-b border-border py-14">
+          <div className="mx-auto max-w-2xl text-center">
+            <h3 className="mb-3 text-2xl font-semibold text-foreground">Stay in the loop</h3>
+            <p className="mb-6 text-muted-foreground">
+              News and launches from Paridhan Emporium. Leave your email if you&apos;d like to hear from us.
             </p>
-            <form
-              onSubmit={handleNewsletterSubmit}
-              className="flex max-w-md mx-auto gap-2"
-            >
+            <form onSubmit={handleNewsletterSubmit} className="mx-auto flex max-w-md gap-2">
               <Input
                 type="email"
-                placeholder="Enter your email address"
+                placeholder="Your email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="flex-1"
-                required
               />
-              <Button type="submit">
+              <Button type="submit" aria-label="Subscribe">
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </form>
           </div>
         </div>
 
-        {/* Main Footer */}
         <div className="py-14">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-10">
+          <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-6">
             <div className="lg:col-span-2">
               <Link
                 href="/"
                 aria-label="Paridhan Emporium Home"
-                className="font-serif text-2xl tracking-tight font-semibold text-foreground hover:opacity-80 transition"
+                className="font-serif text-2xl font-semibold tracking-tight text-foreground transition hover:opacity-80"
               >
                 Paridhan<span className="text-primary">Emporium</span>
               </Link>
 
-              <p className="text-muted-foreground mt-4 mb-6 max-w-sm leading-relaxed">
-                Paridhan Emporium curates premium, daily, and festive ethnic wear
-                that celebrates Indian tradition with a refined modern sensibility.
+              <p className="mb-6 mt-4 max-w-sm leading-relaxed text-muted-foreground">
+                Premium and everyday ethnic wear, curated for you.
               </p>
 
               <div className="space-y-3 text-sm text-muted-foreground">
-                <div className="flex items-center gap-3">
-                  <MapPin className="h-4 w-4 text-primary" />
-                  <span>Rohini, New Delhi, India</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Phone className="h-4 w-4 text-primary" />
-                  <span>+91 9XXXXXXXXX</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Mail className="h-4 w-4 text-primary" />
-                  <span>support@paridhanemporium.com</span>
-                </div>
+                {contactLines.addr.length > 0 ? (
+                  <div className="flex items-start gap-3">
+                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    <span>
+                      {contactLines.addr.map((line) => (
+                        <span key={line} className="block">
+                          {line}
+                        </span>
+                      ))}
+                    </span>
+                  </div>
+                ) : null}
+                {contactLines.phone ? (
+                  <div className="flex items-center gap-3">
+                    <Phone className="h-4 w-4 shrink-0 text-primary" />
+                    <a href={`tel:${contactLines.phone.replace(/\s/g, "")}`} className="hover:text-foreground">
+                      {contactLines.phone}
+                    </a>
+                  </div>
+                ) : null}
+                {contactLines.mail ? (
+                  <div className="flex items-center gap-3">
+                    <Mail className="h-4 w-4 shrink-0 text-primary" />
+                    <a href={`mailto:${contactLines.mail}`} className="hover:text-foreground">
+                      {contactLines.mail}
+                    </a>
+                  </div>
+                ) : null}
+                {!contactLines.addr.length && !contactLines.phone && !contactLines.mail ? (
+                  <p className="text-sm text-muted-foreground">Contact details can be configured for your deployment.</p>
+                ) : null}
               </div>
 
-              <div className="flex gap-3 mt-6">
+              <div className="mt-6 flex gap-3">
                 {socialLinks.map(({ href, icon: Icon, label }) => (
                   <Button
                     key={label}
                     variant="ghost"
                     size="icon"
                     asChild
-                    className="h-10 w-10 rounded-full bg-muted hover:bg-primary hover:text-primary-foreground transition"
+                    className="h-10 w-10 rounded-full bg-muted transition hover:bg-primary hover:text-primary-foreground"
                   >
-                    <Link href={href} aria-label={label}>
+                    <Link href={href || "#"} aria-label={label}>
                       <Icon className="h-4 w-4" />
                     </Link>
                   </Button>
@@ -150,36 +146,104 @@ export default function Footer() {
               </div>
             </div>
 
-            {footerSections.map((section) => (
-              <div key={section.title}>
-                <h4 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wider">
-                  {section.title}
-                </h4>
-                <ul className="space-y-3">
-                  {section.links.map((link) => (
-                    <li key={link.label}>
-                      <Link
-                        href={link.href}
-                        className="text-sm text-muted-foreground hover:text-foreground transition"
-                      >
-                        {link.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+            <div>
+              <h4 className="mb-4 text-sm font-semibold uppercase tracking-wider text-foreground">Shop</h4>
+              <ul className="space-y-3">
+                <li>
+                  <Link href="/" className="text-sm text-muted-foreground transition hover:text-foreground">
+                    All products
+                  </Link>
+                </li>
+                {categories.map((c) => (
+                  <li key={c._id}>
+                    <Link
+                      href={`/?category=${c._id}`}
+                      className="text-sm text-muted-foreground transition hover:text-foreground"
+                    >
+                      {c.name}
+                    </Link>
+                  </li>
+                ))}
+                {categories.length === 0 ? (
+                  <li className="text-sm text-muted-foreground">Categories appear when added in the admin catalog.</li>
+                ) : null}
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="mb-4 text-sm font-semibold uppercase tracking-wider text-foreground">Customer care</h4>
+              <ul className="space-y-3">
+                <li>
+                  <Link href="/contact" className="text-sm text-muted-foreground transition hover:text-foreground">
+                    Contact
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/policy" className="text-sm text-muted-foreground transition hover:text-foreground">
+                    Policies
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/policy/exchange-policy"
+                    className="text-sm text-muted-foreground transition hover:text-foreground"
+                  >
+                    Exchange policy
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="mb-4 text-sm font-semibold uppercase tracking-wider text-foreground">Company</h4>
+              <ul className="space-y-3">
+                <li>
+                  <Link href="/about" className="text-sm text-muted-foreground transition hover:text-foreground">
+                    About
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="mb-4 text-sm font-semibold uppercase tracking-wider text-foreground">Legal</h4>
+              <ul className="space-y-3">
+                <li>
+                  <Link
+                    href="/policy/privacy-policy"
+                    className="text-sm text-muted-foreground transition hover:text-foreground"
+                  >
+                    Privacy
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/policy/terms-conditions"
+                    className="text-sm text-muted-foreground transition hover:text-foreground"
+                  >
+                    Terms
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/policy/cancellation-refund"
+                    className="text-sm text-muted-foreground transition hover:text-foreground"
+                  >
+                    Refunds
+                  </Link>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
 
         <Separator className="my-8" />
 
-        {/* Bottom Bar */}
-        <div className="py-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
+        <div className="flex flex-col items-center justify-between gap-4 py-6 text-sm text-muted-foreground md:flex-row">
           <div className="flex items-center gap-2">
             <span>© {new Date().getFullYear()} Paridhan Emporium.</span>
             <span className="flex items-center gap-1">
-              Crafted with <Heart className="h-4 w-4 text-red-500 fill-current" /> in India.
+              Crafted with <Heart className="h-4 w-4 fill-current text-red-500" /> in India.
             </span>
           </div>
 

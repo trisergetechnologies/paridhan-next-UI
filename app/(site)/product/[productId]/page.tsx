@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { cartLineId } from "@/lib/cartLineId";
+import { getBrowserApiBase } from "@/lib/publicApiBase";
 import { cn } from "@/lib/utils";
 import axios from "axios";
 import { Check, Minus, Plus, Settings2, ShoppingCart, Star } from "lucide-react";
@@ -47,7 +48,7 @@ export default function Product() {
     setLoading(true);
     setProduct(null);
     axios
-      .get(`${process.env.NEXT_PUBLIC_API_URL}/public/products/single/${productId}`)
+      .get(`${getBrowserApiBase()}/public/products/single/${productId}`)
       .then((res) => setProduct(res.data.data))
       .catch(() => setProduct(null))
       .finally(() => setLoading(false));

@@ -1,6 +1,7 @@
 "use client";
 
 import { authFetch } from "@/lib/authFetch";
+import { getBrowserApiBase } from "@/lib/publicApiBase";
 import { useToast } from "./ToastContext";
 import {
   createContext,
@@ -90,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!isAuthenticated || isOffline) return;
     const timer = window.setInterval(async () => {
       try {
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`, {
+        await fetch(`${getBrowserApiBase()}/auth/refresh`, {
           method: "POST",
           credentials: "include",
         });
@@ -105,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /* ================= LOGIN ================= */
 const login = async (payload: { email: string; password: string; requestedRole?: "customer" | "admin" | "staff" | "seller" }) => {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+  const res = await fetch(`${getBrowserApiBase()}/auth/login`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -133,7 +134,7 @@ const signup = async (payload: {
   password: string;
   phone?: string;
 }) => {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register`, {
+  const res = await fetch(`${getBrowserApiBase()}/auth/register`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -155,7 +156,7 @@ const signup = async (payload: {
   /* ================= LOGOUT ================= */
   const logout = async () => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
+      await fetch(`${getBrowserApiBase()}/auth/logout`, {
         method: "POST",
         credentials: "include",
       });
@@ -174,7 +175,7 @@ const signup = async (payload: {
       setIsAuthLoading(true);
 
       const res = await authFetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/user/me`,
+        `${getBrowserApiBase()}/user/me`,
         {
           method: "GET",
           headers: { "Content-Type": "application/json" },

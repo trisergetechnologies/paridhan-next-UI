@@ -1,6 +1,6 @@
 "use client";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+import { getBrowserApiBase } from "./publicApiBase";
 
 let refreshPromise: Promise<boolean> | null = null;
 
@@ -9,7 +9,9 @@ const isNetworkError = (error: unknown) =>
 
 const doRefresh = async (): Promise<boolean> => {
   try {
-    const res = await fetch(`${API_BASE}/auth/refresh`, {
+    const base = getBrowserApiBase();
+    if (!base) return false;
+    const res = await fetch(`${base}/auth/refresh`, {
       method: "POST",
       credentials: "include",
     });

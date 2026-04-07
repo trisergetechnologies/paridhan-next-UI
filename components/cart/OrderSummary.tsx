@@ -13,6 +13,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useToast } from "@/context/ToastContext";
 import { authFetch } from "@/lib/authFetch";
+import { getBrowserApiBase } from "@/lib/publicApiBase";
 import { CreditCard, Heart, Shield, Truck } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -61,7 +62,7 @@ export default function OrderSummary() {
 
     const fetchAddresses = async () => {
       try {
-        const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/customer/address`);
+        const res = await authFetch(`${getBrowserApiBase()}/customer/address`);
         const json = await res.json();
         if (!res.ok || !json.success) {
           setAddressError(json.message || "Failed to fetch addresses");
@@ -93,7 +94,7 @@ export default function OrderSummary() {
       setPlacingOrder(true);
 
       const res = await authFetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/customer/order`,
+        `${getBrowserApiBase()}/customer/order`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

@@ -1,79 +1,49 @@
 "use client";
 
+import { EmptyState } from "@/components/ui/EmptyState";
 import {
   parseHeroSlides,
   PUBLIC_HERO_PATH,
   type HeroSlideItem,
 } from "@/lib/heroApi";
+import { getBrowserApiBase } from "@/lib/publicApiBase";
 import { cn } from "@/lib/utils";
 import axios from "axios";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import HeroSlide from "./HeroSlide";
 
 export type { HeroSlideItem };
 
-const FALLBACK_SLIDES: HeroSlideItem[] = [
-  {
-    id: "fallback-1",
-    eyebrow: "Festive edit",
-    title: "Silk, light, and ceremony",
-    subtitle:
-      "Jewel tones, fluid drapes, and finishes made for photographs and memory—so the outfit feels as good as the moment.",
-    image:
-      "https://images.unsplash.com/photo-1595777460563-701a668526cc?auto=format&fit=crop&w=1920&q=80",
-    cta: "Shop featured",
-    href: "/",
-  },
-  {
-    id: "fallback-2",
-    eyebrow: "New silhouettes",
-    title: "Contemporary classics",
-    subtitle:
-      "Tailoring meets texture—pieces that move with you from daytime gatherings to after-dark celebrations.",
-    image:
-      "https://images.unsplash.com/photo-1612423284934-2850a4ea6c60?auto=format&fit=crop&w=1920&q=80",
-    cta: "Explore collection",
-    href: "/",
-  },
-  {
-    id: "fallback-3",
-    eyebrow: "Craft & care",
-    title: "Fabrics you can feel",
-    subtitle:
-      "Handpicked textiles and honest detail—packaging and polish that match the care inside every fold.",
-    image:
-      "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1920&q=80",
-    cta: "Discover more",
-    href: "/",
-  },
-];
-
 export default function HeroSlider() {
   const [index, setIndex] = useState(0);
-  const [slides, setSlides] = useState<HeroSlideItem[]>(FALLBACK_SLIDES);
+  const [slides, setSlides] = useState<HeroSlideItem[]>([]);
+  const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
   const [paused, setPaused] = useState(false);
   const reduceMotion = useReducedMotion();
 
   useEffect(() => {
-    const base = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "";
-    if (!base) return;
-
     const loadSlides = async () => {
+      const base = getBrowserApiBase();
+      if (!base) {
+        setSlides([]);
+        setLoadState("error");
+        return;
+      }
+      setLoadState("loading");
       try {
         const res = await axios.get(`${base}${PUBLIC_HERO_PATH}`);
         const parsed = parseHeroSlides(res.data);
-        if (parsed.length) {
-          setSlides(parsed);
-          setIndex(0);
-        }
-      } catch {
-        setSlides(FALLBACK_SLIDES);
+        setSlides(parsed);
         setIndex(0);
+        setLoadState("ready");
+      } catch {
+        setSlides([]);
+        setLoadState("error");
       }
     };
-    loadSlides();
+    void loadSlides();
   }, []);
 
   const go = useCallback(
@@ -83,7 +53,7 @@ export default function HeroSlider() {
         return (prev + dir + len) % len;
       });
     },
-    [slides.length]
+    [slides.length],
   );
 
   useEffect(() => {
@@ -93,6 +63,32 @@ export default function HeroSlider() {
     }, 6500);
     return () => clearInterval(timer);
   }, [slides, paused]);
+
+  if (loadState === "loading") {
+    return (
+      <section className="relative min-h-[min(70vh,520px)] w-full animate-pulse bg-gradient-to-b from-muted to-background" aria-hidden>
+        <div className="absolute inset-0 bg-muted/50" />
+      </section>
+    );
+  }
+
+  if (loadState === "error" || slides.length === 0) {
+    return (
+      <section className="relative border-b border-border bg-gradient-to-b from-muted/40 to-background">
+        <div className="mx-auto max-w-3xl px-4 py-16 sm:py-20">
+          <EmptyState
+            icon={ImageIcon}
+            title="Featured collections aren’t available yet"
+            description={
+              loadState === "error"
+                ? "We couldn’t load the hero carousel. Please refresh the page, or try again in a moment."
+                : "When products are marked as featured in the catalog, they will appear here automatically."
+            }
+          />
+        </div>
+      </section>
+    );
+  }
 
   const current = slides[index];
 
@@ -112,11 +108,7 @@ export default function HeroSlider() {
           exit={reduceMotion ? undefined : { opacity: 0 }}
           transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
         >
-          <HeroSlide
-            slide={current}
-            slideIndex={index + 1}
-            totalSlides={slides.length}
-          />
+          <HeroSlide slide={current} slideIndex={index + 1} totalSlides={slides.length} />
         </motion.div>
       </AnimatePresence>
 
@@ -157,7 +149,7 @@ export default function HeroSlider() {
                     "h-1.5 rounded-full transition-all duration-500 ease-out",
                     i === index
                       ? "w-9 bg-primary shadow-[0_0_12px_oklch(0.62_0.26_27_/_0.45)]"
-                      : "w-1.5 bg-white/35 hover:bg-white/60"
+                      : "w-1.5 bg-white/35 hover:bg-white/60",
                   )}
                 />
               ))}
