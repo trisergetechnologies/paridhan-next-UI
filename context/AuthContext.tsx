@@ -1,6 +1,7 @@
 "use client";
 
-import { getToken, removeToken, setToken } from "@/lib/tokenHelper";
+import { authFetch } from "@/lib/authFetch";
+import { useToast } from "./ToastContext";
 import {
   createContext,
   ReactNode,
@@ -17,6 +18,8 @@ export type User = {
   email: string;
   phone?: string;
   role: "customer" | "admin" | "staff" | "seller";
+  activeRole?: "customer" | "admin" | "staff" | "seller";
+  roles?: ("customer" | "admin" | "staff" | "seller")[];
   avatar?: string;
   wishlist?: string[];
   addresses?: any[];
@@ -33,14 +36,17 @@ type SignUpPayload = {
 type LoginPayload = {
   email: string;
   password: string;
+  requestedRole?: "customer" | "admin" | "staff" | "seller";
 }
 
 type AuthContextType = {
   user: User | null;
   isAuthenticated: boolean;
   isAuthLoading: boolean;
+  isOffline: boolean;
+  authDegraded: boolean;
   login: (payload: LoginPayload) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   signup: (payload: SignUpPayload)=> Promise<void>;
   refreshUser: () => Promise<void>;
 };
@@ -52,36 +58,72 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 /* ================= PROVIDER ================= */
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { showToast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [isOffline, setIsOffline] = useState(false);
+  const [authDegraded, setAuthDegraded] = useState(false);
 
   const isAuthenticated = Boolean(user);
 
   /* ================= INIT ================= */
   useEffect(() => {
-    const token = getToken();
-    if (token) {
-      refreshUser();
-    } else {
-      setIsAuthLoading(false);
-    }
+    refreshUser();
   }, []);
 
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOffline(false);
+      setAuthDegraded(false);
+      refreshUser();
+    };
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated || isOffline) return;
+    const timer = window.setInterval(async () => {
+      try {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`, {
+          method: "POST",
+          credentials: "include",
+        });
+        setAuthDegraded(false);
+      } catch {
+        setAuthDegraded(true);
+      }
+    }, 25 * 60 * 1000);
+
+    return () => window.clearInterval(timer);
+  }, [isAuthenticated, isOffline]);
+
   /* ================= LOGIN ================= */
-const login = async (payload: { email: string; password: string }) => {
+const login = async (payload: { email: string; password: string; requestedRole?: "customer" | "admin" | "staff" | "seller" }) => {
   const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      ...payload,
+      requestedRole: payload.requestedRole || "customer",
+    }),
   });
 
   const json = await res.json();
 
   if (!json.success) {
+    showToast(json.message || "Login failed", "error");
     throw new Error(json.message || "Login failed");
   }
 
-  setToken(json.data.token);
+  setAuthDegraded(false);
+  setIsOffline(false);
   await refreshUser();
 };
 
@@ -93,6 +135,7 @@ const signup = async (payload: {
 }) => {
   const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
@@ -100,52 +143,73 @@ const signup = async (payload: {
   const json = await res.json();
 
   if (!json.success) {
+    showToast(json.message || "Signup failed", "error");
     throw new Error(json.message || "Signup failed");
   }
 
-  setToken(json.data.token);
+  setAuthDegraded(false);
+  setIsOffline(false);
   await refreshUser();
 };
 
   /* ================= LOGOUT ================= */
-  const logout = () => {
-    removeToken();
+  const logout = async () => {
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {
+      // No-op: keep local cleanup deterministic.
+    }
     setUser(null);
+    showToast("Logged out", "info");
+    setAuthDegraded(false);
     setIsAuthLoading(false);
   };
 
   /* ================= FETCH PROFILE ================= */
   const refreshUser = async () => {
     try {
-      const token = getToken();
-      if (!token) {
-        logout();
-        return;
-      }
-
       setIsAuthLoading(true);
 
-      const res = await fetch(
+      const res = await authFetch(
         `${process.env.NEXT_PUBLIC_API_URL}/user/me`,
         {
           method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
         }
       );
 
-      const json = await res.json();
-
-      if (!res.ok || !json.success) {
-        throw new Error(json.message || "Authentication failed");
+      if (!res.ok) {
+        if (res.status === 401) {
+          setUser(null);
+          setAuthDegraded(false);
+          return;
+        }
+        if (res.status >= 500 || res.status === 429) {
+          setAuthDegraded(true);
+          return;
+        }
+        throw new Error("Unexpected auth response");
       }
 
-      setUser(json.data);
+      const json = await res.json();
+      if (json.success) {
+        setUser(json.data);
+        setIsOffline(false);
+        setAuthDegraded(false);
+      }
     } catch (error) {
+      const err = error as Error & { code?: string };
+      if (err.code === "NETWORK_OFFLINE") {
+        setIsOffline(true);
+        setAuthDegraded(true);
+        return;
+      }
       console.error("Auth error:", error);
-      logout();
+      // Do not force logout on non-auth failures.
+      setAuthDegraded(true);
     } finally {
       setIsAuthLoading(false);
     }
@@ -158,6 +222,8 @@ const signup = async (payload: {
         user,
         isAuthenticated,
         isAuthLoading,
+        isOffline,
+        authDegraded,
         login,
         logout,
         signup,

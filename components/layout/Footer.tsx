@@ -31,34 +31,34 @@ export default function Footer() {
     {
       title: "Shop",
       links: [
-        { href: "/sarees", label: "Sarees" },
-        { href: "/daily-wear", label: "Daily Wear" },
-        { href: "/festive", label: "Festive Collection" },
-        { href: "/new-arrivals", label: "New Arrivals" },
+        { href: "/", label: "Sarees" },
+        { href: "/", label: "Daily Wear" },
+        { href: "/", label: "Festive Collection" },
+        { href: "/", label: "New Arrivals" },
       ],
     },
     {
       title: "Customer Care",
       links: [
         { href: "/contact", label: "Contact Us" },
-        { href: "/shipping-policy", label: "Shipping Information" },
-        { href: "/returns", label: "Returns & Exchanges" },
-        { href: "/faq", label: "FAQs" },
+        { href: "/policy", label: "Shipping Information" },
+        { href: "/policy/exchange-policy", label: "Returns & Exchanges" },
+        { href: "/contact", label: "FAQs" },
       ],
     },
     {
       title: "Company",
       links: [
         { href: "/about", label: "About Paridhan" },
-        { href: "/our-story", label: "Our Story" },
+        { href: "/about", label: "Our Story" },
       ],
     },
     {
       title: "Legal",
       links: [
-        { href: "/privacy-policy", label: "Privacy Policy" },
-        { href: "/terms", label: "Terms & Conditions" },
-        { href: "/refund-policy", label: "Refund Policy" },
+        { href: "/policy/privacy-policy", label: "Privacy Policy" },
+        { href: "/policy/terms-conditions", label: "Terms & Conditions" },
+        { href: "/policy/cancellation-refund", label: "Refund Policy" },
       ],
     },
   ];
@@ -108,7 +108,7 @@ export default function Footer() {
               <Link
                 href="/"
                 aria-label="Paridhan Emporium Home"
-                className="text-2xl tracking-tight font-semibold text-foreground hover:opacity-80 transition"
+                className="font-serif text-2xl tracking-tight font-semibold text-foreground hover:opacity-80 transition"
               >
                 Paridhan<span className="text-primary">Emporium</span>
               </Link>
@@ -184,13 +184,13 @@ export default function Footer() {
           </div>
 
           <div className="flex items-center gap-6">
-            <Link href="/privacy-policy" className="hover:text-foreground">
+            <Link href="/policy/privacy-policy" className="hover:text-foreground">
               Privacy
             </Link>
-            <Link href="/terms" className="hover:text-foreground">
+            <Link href="/policy/terms-conditions" className="hover:text-foreground">
               Terms
             </Link>
-            <Link href="/refund-policy" className="hover:text-foreground">
+            <Link href="/policy/cancellation-refund" className="hover:text-foreground">
               Refunds
             </Link>
           </div>

@@ -3,8 +3,9 @@
 import AuthModal from "@/components/auth/AuthModal";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
+import { useWishlist } from "@/context/WishlistContext";
 import { AnimatePresence, motion, type Variants } from "framer-motion";
-import { ChevronDown, Menu, ShoppingCart, User, X } from "lucide-react";
+import { ChevronDown, Heart, Menu, ShoppingCart, User, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -13,8 +14,7 @@ import { Button } from "../ui/button";
 export default function Header() {
   const { cart } = useCart();
   const { user, isAuthenticated, logout } = useAuth();
-
-  console.log("isAuthenticated", isAuthenticated);
+  const { count: wishlistCount } = useWishlist();
 
   const router = useRouter();
   const pathname = usePathname();
@@ -37,6 +37,16 @@ export default function Header() {
     const onScroll = () => setIsScrolled(window.scrollY > 10);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const openAuth = (event: Event) => {
+      const detail = (event as CustomEvent<{ mode?: "signin" | "signup" }>).detail;
+      setAuthMode(detail?.mode || "signin");
+      setAuthOpen(true);
+    };
+    window.addEventListener("open-auth-modal", openAuth as EventListener);
+    return () => window.removeEventListener("open-auth-modal", openAuth as EventListener);
   }, []);
 
   useEffect(() => {
@@ -111,7 +121,10 @@ export default function Header() {
         <div className="container mx-auto px-4 sm:px-6 py-4">
           <div className="relative flex items-center justify-between md:grid md:grid-cols-3">
             {/* LOGO */}
-            <Link href="/" className="text-2xl font-semibold tracking-tight">
+            <Link
+              href="/"
+              className="font-serif text-2xl font-semibold tracking-tight"
+            >
               P.<span className="text-primary">E.</span>
             </Link>
 
@@ -194,18 +207,36 @@ export default function Header() {
 
             {/* ================= ACTIONS ================= */}
             <div className="flex items-center gap-3 justify-end">
+              {/* WISHLIST */}
+              {isAuthenticated && (
+                <Link
+                  href="/wishlist"
+                  className="relative p-2 rounded-full hover:bg-gray-100"
+                  aria-label={`Wishlist${wishlistCount > 0 ? `, ${wishlistCount} items` : ""}`}
+                >
+                  <Heart className="h-5 w-5 text-primary" strokeWidth={1.75} />
+                  {wishlistCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 bg-primary text-primary-foreground text-[10px] font-bold min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full border-2 border-white">
+                      {wishlistCount > 99 ? "99+" : wishlistCount}
+                    </span>
+                  )}
+                </Link>
+              )}
+
               {/* CART */}
-              <Link
-                href="/cart"
-                className="relative p-2 rounded-full hover:bg-gray-100"
-              >
-                <ShoppingCart className="h-5 w-5 text-primary" />
-                {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-primary text-black text-xs font-bold rounded-full h-5 px-1 flex items-center justify-center">
-                    {cartCount > 99 ? "99+" : cartCount}
-                  </span>
-                )}
-              </Link>
+              {isAuthenticated && (
+                <Link
+                  href="/cart"
+                  className="relative p-2 rounded-full hover:bg-gray-100"
+                >
+                  <ShoppingCart className="h-5 w-5 text-primary" />
+                  {cartCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-primary text-black text-xs font-bold rounded-full h-5 px-1 flex items-center justify-center">
+                      {cartCount > 99 ? "99+" : cartCount}
+                    </span>
+                  )}
+                </Link>
+              )}
 
               {/* PROFILE (DESKTOP) */}
               {isAuthenticated && user && (
@@ -231,6 +262,13 @@ export default function Header() {
                           className="w-full px-4 py-3 text-sm text-left hover:bg-black hover:text-white"
                         >
                           Profile
+                        </button>
+                        <button
+                          onClick={() => router.push("/wishlist")}
+                          className="w-full px-4 py-3 text-sm text-left hover:bg-black hover:text-white"
+                        >
+                          Wishlist
+                          {wishlistCount > 0 ? ` (${wishlistCount})` : ""}
                         </button>
                         <button
                           onClick={() => router.push("/orders")}
@@ -320,6 +358,18 @@ export default function Header() {
 
               {isAuthenticated ? (
                 <div className="pt-4 mt-4 border-t space-y-2">
+                  <Link
+                    href="/wishlist"
+                    onClick={() => setIsMobileOpen(false)}
+                    className="flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium hover:bg-gray-100"
+                  >
+                    Wishlist
+                    {wishlistCount > 0 ? (
+                      <span className="text-xs bg-primary/15 text-primary px-2 py-0.5 rounded-full">
+                        {wishlistCount}
+                      </span>
+                    ) : null}
+                  </Link>
                   <button
                     onClick={() => {
                       setIsMobileOpen(false);

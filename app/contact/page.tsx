@@ -17,6 +17,7 @@ import {
   Send,
   Shield,
 } from "lucide-react";
+import { submitContactMessage } from "@/lib/contactApi";
 import { useState } from "react";
 
 export default function Contact() {
@@ -28,6 +29,7 @@ export default function Contact() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -38,17 +40,27 @@ export default function Contact() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError(null);
     setIsSubmitting(true);
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    const result = await submitContactMessage({
+      name: formData.name.trim(),
+      email: formData.email.trim(),
+      subject: formData.subject.trim(),
+      message: formData.message.trim(),
+    });
 
     setIsSubmitting(false);
-    setIsSubmitted(true);
 
-    setTimeout(() => {
-      setIsSubmitted(false);
-      setFormData({ name: "", email: "", subject: "", message: "" });
-    }, 3000);
+    if (!result.success) {
+      setSubmitError(result.message || "Something went wrong.");
+      return;
+    }
+
+    setIsSubmitted(true);
+    setFormData({ name: "", email: "", subject: "", message: "" });
+
+    window.setTimeout(() => setIsSubmitted(false), 4000);
   };
 
   const contactInfo = [
@@ -134,6 +146,14 @@ export default function Contact() {
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleSubmit} className="space-y-6">
+                    {submitError ? (
+                      <p
+                        className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                        role="alert"
+                      >
+                        {submitError}
+                      </p>
+                    ) : null}
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label

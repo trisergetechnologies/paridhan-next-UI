@@ -8,11 +8,12 @@ import Image from "next/image";
 
 interface CartItemProps {
   item: {
-    id: number;
+    id: string;
     name: string;
     price: number;
     image: string;
     quantity: number;
+    variantLabel?: string;
   };
   isLast: boolean;
 }
@@ -39,6 +40,11 @@ export default function CartItem({ item, isLast }: CartItemProps) {
               <h2 className="font-semibold text-foreground line-clamp-2">
                 {item.name}
               </h2>
+              {item.variantLabel ? (
+                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                  {item.variantLabel}
+                </p>
+              ) : null}
               <p className="text-sm text-muted-foreground mt-1">
                 ₹{item.price.toFixed(2)} each
               </p>

@@ -11,9 +11,10 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
-import { getToken } from "@/lib/tokenHelper";
-import axios from "axios";
+import { useToast } from "@/context/ToastContext";
+import { authFetch } from "@/lib/authFetch";
 import { CreditCard, Heart, Shield, Truck } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 /* ================= TYPES ================= */
@@ -31,12 +32,14 @@ interface Address {
 /* ================= COMPONENT ================= */
 
 export default function OrderSummary() {
-  const { cart } = useCart();
+  const { cart, pricing } = useCart();
   const { isAuthenticated } = useAuth();
+  const { showToast } = useToast();
 
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
   const [placingOrder, setPlacingOrder] = useState(false);
+  const [addressError, setAddressError] = useState<string | null>(null);
 
   const itemCount = cart.reduce((s, i) => s + i.quantity, 0);
   const subtotal = cart.reduce(
@@ -44,10 +47,13 @@ export default function OrderSummary() {
     0
   );
 
-  /* ---------- BACKEND TOTALS (AUTH) ---------- */
-  const tax = Math.round(subtotal * 0.05);
-  const shipping = subtotal >= 999 ? 0 : 80;
-  const total = subtotal + tax + shipping;
+  const tax = isAuthenticated ? pricing.taxAmount : Math.round(subtotal * 0.05);
+  const shipping = isAuthenticated
+    ? pricing.deliveryCharge
+    : subtotal >= 999
+      ? 0
+      : 80;
+  const total = isAuthenticated ? pricing.grandTotal : subtotal + tax + shipping;
 
   /* ---------- FETCH ADDRESSES ---------- */
   useEffect(() => {
@@ -55,20 +61,24 @@ export default function OrderSummary() {
 
     const fetchAddresses = async () => {
       try {
-        const token = await getToken();
-        const res = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/user/addresses`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-
-        setAddresses(res.data.data.items);
-        if (res.data.data.items.length > 0) {
-          setSelectedAddress(res.data.data.items[0].slug);
+        const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/customer/address`);
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          setAddressError(json.message || "Failed to fetch addresses");
+          return;
+        }
+        const items = json.data.items || [];
+        setAddresses(items);
+        setAddressError(null);
+        const defaultAddress = items.find((addr: Address & { isDefault?: boolean }) => addr.isDefault);
+        if (defaultAddress) {
+          setSelectedAddress(defaultAddress.slug);
+        } else if (items.length > 0) {
+          setSelectedAddress(items[0].slug);
         }
       } catch (error) {
         console.error("Address fetch failed:", error);
+        setAddressError("Address service unavailable");
       }
     };
 
@@ -81,18 +91,25 @@ export default function OrderSummary() {
 
     try {
       setPlacingOrder(true);
-      const token = await getToken();
 
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/orders/create`,
+      const res = await authFetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/customer/order`,
         {
-          addressSlug: selectedAddress,
-          paymentMethod: "COD",
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            addressSlug: selectedAddress,
+            paymentMethod: "cod",
+          }),
         }
       );
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setAddressError(json.message || "Order placement failed");
+        showToast(json.message || "Order placement failed", "error");
+        return;
+      }
+      showToast("Order placed successfully", "success");
 
       window.location.href = "/orders";
     } catch (error) {
@@ -152,6 +169,14 @@ export default function OrderSummary() {
         {isAuthenticated && (
           <div className="space-y-2 pt-2">
             <p className="text-sm font-medium">Delivery Address</p>
+            {addressError && (
+              <p className="text-sm text-red-600">{addressError}</p>
+            )}
+            {addresses.length === 0 ? (
+              <Link href="/account" className="text-sm text-primary underline">
+                No address found. Add address in account page.
+              </Link>
+            ) : null}
             <select
               value={selectedAddress || ""}
               onChange={(e) => setSelectedAddress(e.target.value)}

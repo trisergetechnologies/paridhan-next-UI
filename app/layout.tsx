@@ -2,13 +2,25 @@ import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
+import { ToastProvider } from "@/context/ToastContext";
+import { WishlistProvider } from "@/context/WishlistContext";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Cormorant_Garamond, Montserrat } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
+/** Body / UI: luxury sans (reference: Montserrat) */
+const fontSans = Montserrat({
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-body",
+  display: "swap",
+});
+
+/** Display / headings: luxury serif (reference: Cormorant Garamond) */
+const fontSerif = Cormorant_Garamond({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-display",
   display: "swap",
 });
 
@@ -24,20 +36,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${fontSans.variable} ${fontSerif.variable}`}>
       <body
-        className={`${inter.className}  antialiased flex flex-col min-h-screen`}
+        className={`${fontSans.className} antialiased flex flex-col min-h-screen`}
       >
-        <AuthProvider>
-        <CartProvider>
-           
-          {/* <AnnouncementBar /> */}
-          <Header />
-          {/* <HeroSlider /> */}
-          <main className="grow">{children}</main>
-          <Footer />
-        </CartProvider>
-        </AuthProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <WishlistProvider>
+              <CartProvider>
+                <Header />
+                <main className="grow">{children}</main>
+                <Footer />
+              </CartProvider>
+            </WishlistProvider>
+          </AuthProvider>
+        </ToastProvider>
       </body>
     </html>
   );

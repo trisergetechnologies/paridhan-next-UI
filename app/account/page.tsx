@@ -1,29 +1,25 @@
 "use client";
 
+import { authFetch } from "@/lib/authFetch";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Check, Edit, Plus, X } from "lucide-react";
+import { Check, Edit, Plus, Trash2, X } from "lucide-react";
 
 /* ---------------- TYPES ---------------- */
 
 type Address = {
-  id: string;
-  name: string;
-  line1: string;
+  slug: string;
+  fullName: string;
+  phone: string;
+  street: string;
   city: string;
   state: string;
-  pincode: string;
+  postalCode: string;
+  country: string;
   isDefault: boolean;
-};
-
-type RecentOrder = {
-  id: string;
-  image: string;
-  name: string;
-  price: number;
 };
 
 /* ---------------- COMPONENT ---------------- */
@@ -34,29 +30,25 @@ export default function AccountPage() {
 
   /* ---------------- STATE ---------------- */
 
-  const [addresses, setAddresses] = useState<Address[]>([
-    {
-      id: "1",
-      name: "Home",
-      line1: "Sector 8, Rohini",
-      city: "Delhi",
-      state: "Delhi",
-      pincode: "110085",
-      isDefault: true,
-    },
-  ]);
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [loadingAddresses, setLoadingAddresses] = useState(false);
+  const [addressError, setAddressError] = useState<string | null>(null);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingSlug, setEditingSlug] = useState<string | null>(null);
 
-  const [addressForm, setAddressForm] = useState<Omit<Address, "id">>({
-    name: "",
-    line1: "",
+  const [addressForm, setAddressForm] = useState<Address>({
+    slug: "",
+    fullName: "",
+    phone: "",
+    street: "",
     city: "",
     state: "",
-    pincode: "",
+    postalCode: "",
+    country: "India",
     isDefault: false,
   });
+  const [savingAddress, setSavingAddress] = useState(false);
 
   const [passwords, setPasswords] = useState({
     current: "",
@@ -64,89 +56,128 @@ export default function AccountPage() {
     confirm: "",
   });
 
-  const recentOrders: RecentOrder[] = [
-    {
-      id: "o1",
-      image:
-        "https://images.unsplash.com/photo-1732709470611-670308da8c5e?q=80&w=880&auto=format&fit=crop",
-      name: "Banarasi Silk Saree",
-      price: 4999,
-    },
-    {
-      id: "o2",
-      image:
-        "https://images.unsplash.com/photo-1732709470611-670308da8c5e?q=80&w=880&auto=format&fit=crop",
-      name: "Kanjivaram Wedding Saree",
-      price: 8999,
-    },
-  ];
-
   /* ---------------- AUTH GUARD ---------------- */
 
   useEffect(() => {
     if (!isAuthenticated) router.replace("/");
   }, [isAuthenticated, router]);
 
+  const fetchAddresses = async () => {
+    try {
+      setLoadingAddresses(true);
+      const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/customer/address`);
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setAddressError(json.message || "Failed to fetch addresses");
+        return;
+      }
+      setAddressError(null);
+      setAddresses(json.data.items || []);
+    } catch (error) {
+      console.error("Failed to fetch addresses", error);
+      setAddressError("Failed to fetch addresses");
+    } finally {
+      setLoadingAddresses(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) fetchAddresses();
+  }, [isAuthenticated]);
+
   if (!user) return null;
 
   /* ---------------- ADDRESS HANDLERS ---------------- */
 
   const openAddForm = () => {
-    setEditingId(null);
+    setEditingSlug(null);
     setAddressForm({
-      name: "",
-      line1: "",
+      slug: "",
+      fullName: "",
+      phone: "",
+      street: "",
       city: "",
       state: "",
-      pincode: "",
+      postalCode: "",
+      country: "India",
       isDefault: false,
     });
     setIsFormOpen(true);
   };
 
   const openEditForm = (addr: Address) => {
-    setEditingId(addr.id);
+    setEditingSlug(addr.slug);
     setAddressForm({ ...addr });
     setIsFormOpen(true);
   };
 
-  const saveAddress = () => {
-    if (editingId) {
-      setAddresses((prev) =>
-        prev.map((a) =>
-          a.id === editingId
-            ? {
-                ...addressForm,
-                id: editingId,
-              }
-            : addressForm.isDefault
-            ? { ...a, isDefault: false }
-            : a
-        )
-      );
-    } else {
-      setAddresses((prev) => [
-        ...prev.map((a) =>
-          addressForm.isDefault ? { ...a, isDefault: false } : a
-        ),
-        {
-          ...addressForm,
-          id: Date.now().toString(),
-        },
-      ]);
-    }
+  const saveAddress = async () => {
+    try {
+      setSavingAddress(true);
+      const isEdit = Boolean(editingSlug);
+      const endpoint = isEdit
+        ? `${process.env.NEXT_PUBLIC_API_URL}/customer/address/${editingSlug}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/customer/address`;
+      const method = isEdit ? "PUT" : "POST";
 
-    setIsFormOpen(false);
-    setEditingId(null);
+      const res = await authFetch(endpoint, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(addressForm),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setAddressError(json.message || "Failed to save address");
+        return;
+      }
+
+      setIsFormOpen(false);
+      setEditingSlug(null);
+      setAddressError(null);
+      await fetchAddresses();
+    } catch (error) {
+      console.error("Save address failed", error);
+      setAddressError("Failed to save address");
+    } finally {
+      setSavingAddress(false);
+    }
   };
 
-  const setDefaultAddress = (id: string) => {
-    setAddresses((prev) =>
-      prev.map((a) => ({
-        ...a,
-        isDefault: a.id === id,
-      }))
-    );
+  const setDefaultAddress = async (slug: string) => {
+    try {
+      const res = await authFetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/customer/address/${slug}/default`,
+        { method: "PATCH" }
+      );
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setAddressError(json.message || "Failed to set default address");
+        return;
+      }
+      setAddressError(null);
+      await fetchAddresses();
+    } catch (error) {
+      console.error("Set default address failed", error);
+      setAddressError("Failed to set default address");
+    }
+  };
+
+  const deleteAddress = async (slug: string) => {
+    try {
+      const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/customer/address/${slug}`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setAddressError(json.message || "Failed to delete address");
+        return;
+      }
+      setAddressError(null);
+      await fetchAddresses();
+    } catch (error) {
+      console.error("Delete address failed", error);
+      setAddressError("Failed to delete address");
+    }
   };
 
   /* ---------------- UI ---------------- */
@@ -186,12 +217,18 @@ export default function AccountPage() {
         </div>
 
         <div className="space-y-4">
+          {addressError && (
+            <p className="text-sm text-red-600">{addressError}</p>
+          )}
+          {loadingAddresses && (
+            <p className="text-sm text-muted-foreground">Loading addresses...</p>
+          )}
           {addresses.map((addr) => (
             <div
-              key={addr.id}
+              key={addr.slug}
               className="rounded-xl border bg-white p-5 flex gap-4"
             >
-              <button onClick={() => setDefaultAddress(addr.id)}>
+              <button onClick={() => setDefaultAddress(addr.slug)}>
                 {addr.isDefault ? (
                   <Check className="h-5 w-5 text-primary" />
                 ) : (
@@ -200,19 +237,30 @@ export default function AccountPage() {
               </button>
 
               <div className="flex-1">
-                <p className="font-medium">{addr.name}</p>
+                <p className="font-medium">{addr.fullName}</p>
                 <p className="text-sm text-muted-foreground">
-                  {addr.line1}, {addr.city}, {addr.state} - {addr.pincode}
+                  {addr.street}, {addr.city}, {addr.state} - {addr.postalCode}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {addr.phone} | {addr.slug}
                 </p>
               </div>
-
-              <button
-                onClick={() => openEditForm(addr)}
-                className="text-sm text-primary flex items-center gap-1"
-              >
-                <Edit className="h-4 w-4" />
-                Edit
-              </button>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => openEditForm(addr)}
+                  className="text-sm text-primary flex items-center gap-1"
+                >
+                  <Edit className="h-4 w-4" />
+                  Edit
+                </button>
+                <button
+                  onClick={() => deleteAddress(addr.slug)}
+                  className="text-sm text-red-600 flex items-center gap-1"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -221,10 +269,10 @@ export default function AccountPage() {
         {isFormOpen && (
           <div className="mt-6 rounded-xl border bg-white p-6 space-y-4 max-w-xl">
             <h3 className="font-semibold">
-              {editingId ? "Edit Address" : "Add New Address"}
+              {editingSlug ? "Edit Address" : "Add New Address"}
             </h3>
 
-            {["name", "line1", "city", "state", "pincode"].map((field) => (
+            {["slug", "fullName", "phone", "street", "city", "state", "postalCode", "country"].map((field) => (
               <input
                 key={field}
                 placeholder={field.toUpperCase()}
@@ -254,7 +302,9 @@ export default function AccountPage() {
             </label>
 
             <div className="flex gap-3">
-              <Button onClick={saveAddress}>Save Address</Button>
+              <Button onClick={saveAddress} disabled={savingAddress}>
+                {savingAddress ? "Saving..." : "Save Address"}
+              </Button>
               <Button
                 variant="ghost"
                 onClick={() => setIsFormOpen(false)}
@@ -300,37 +350,6 @@ export default function AccountPage() {
             }
           />
           <Button>Update Password</Button>
-        </div>
-      </section>
-
-      {/* ================= RECENT ORDERS ================= */}
-      <section>
-        <h2 className="text-xl font-semibold mb-4">Recent Orders</h2>
-
-        <div className="flex gap-6 overflow-x-auto pb-4">
-          {recentOrders.map((order) => (
-            <div
-              key={order.id}
-              className="min-w-[220px] rounded-xl border bg-white overflow-hidden"
-            >
-              <div className="relative h-56">
-                <Image
-                  src={order.image}
-                  alt={order.name}
-                  fill
-                  className="object-cover"
-                />
-              </div>
-              <div className="p-4">
-                <p className="text-sm font-medium line-clamp-2">
-                  {order.name}
-                </p>
-                <p className="font-semibold text-primary">
-                  ₹{order.price.toLocaleString("en-IN")}
-                </p>
-              </div>
-            </div>
-          ))}
         </div>
       </section>
     </div>

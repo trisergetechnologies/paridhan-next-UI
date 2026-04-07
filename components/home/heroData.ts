@@ -7,7 +7,7 @@ export const heroSlides = [
     image:
       "/images/collection01.png",
     cta: "Shop Now",
-    href: "/product/1",
+    href: "/",
   },
   {
     id: "banarasi-royal",
@@ -17,7 +17,7 @@ export const heroSlides = [
     image:
       "/images/collection02.png",
     cta: "Explore Collection",
-    href: "/product/3",
+    href: "/",
   },
   {
     id: "everyday-elegance",
@@ -27,6 +27,6 @@ export const heroSlides = [
     image:
       "https://images.unsplash.com/photo-1732709470611-670308da8c5e?q=80&w=880&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     cta: "View Sarees",
-    href: "/product/5",
+    href: "/",
   },
 ];
