@@ -26,6 +26,6 @@ export function getBrowserApiBase(): string {
 export function getServerApiBase(): string {
   const fromEnv = normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
   if (fromEnv) return fromEnv;
-  const proxy = (process.env.API_PROXY_TARGET || "http://127.0.0.1:5000").replace(/\/$/, "");
+  const proxy = (process.env.API_PROXY_TARGET || "http://127.0.0.1:4600").replace(/\/$/, "");
   return `${proxy}/api/v1`;
 }
