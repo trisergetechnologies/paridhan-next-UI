@@ -1,0 +1,2 @@
+cd ~/apps/paridhan/paridhan-next-UI
+PORT=4602 pm2 start npm --name "paridhan-website-main" -- start
