@@ -13,6 +13,7 @@ import {
   paymentMethodLabel,
 } from "@/lib/orderDisplay";
 import { cn } from "@/lib/utils";
+import { OrderItemProductTitle } from "@/components/orders/OrderItemProductTitle";
 import {
   ArrowLeft,
   CheckCircle,
@@ -263,9 +264,19 @@ export default function OrderDetailPage() {
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium text-foreground leading-snug">
-                    {item.name}
-                  </p>
+                  <OrderItemProductTitle
+                    name={item.name}
+                    quantity={item.quantity}
+                    productId={
+                      item.productId != null
+                        ? String(item.productId)
+                        : undefined
+                    }
+                    productSlug={item.productSlug}
+                    productPublicId={item.productPublicId}
+                    showQuantityInTitle={false}
+                    className="leading-snug line-clamp-none"
+                  />
                   {item.variantLabel ? (
                     <p className="text-xs text-muted-foreground mt-1">
                       {item.variantLabel}

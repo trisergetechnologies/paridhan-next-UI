@@ -10,7 +10,7 @@ export default function ProductBreadcrumb() {
         asChild
         className="text-muted-foreground hover:text-foreground"
       >
-        <Link href="/" className="flex items-center gap-2">
+        <Link href="/shop" className="flex items-center gap-2">
           <ArrowLeft className="h-4 w-4" />
           Back to Shop
         </Link>

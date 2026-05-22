@@ -14,6 +14,8 @@ import {
   type ReactNode,
 } from "react";
 
+const GUEST_WISHLIST_KEY = "wishlist";
+
 /** Matches backend `toPublicProductList` shape returned from GET /user/wishlist */
 export type WishlistProduct = {
   publicId: string;
@@ -44,14 +46,35 @@ type WishlistContextValue = {
   count: number;
   refreshWishlist: () => Promise<void>;
   isWishlisted: (publicId: string) => boolean;
-  /** Add or remove; returns true on success */
-  toggleWishlist: (publicId: string) => Promise<boolean>;
+  toggleWishlist: (publicId: string, snapshot?: WishlistProduct) => Promise<boolean>;
   wishlistBusyId: string | null;
 };
 
 const WishlistContext = createContext<WishlistContextValue | undefined>(
   undefined
 );
+
+function loadGuestWishlist(): WishlistProduct[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(GUEST_WISHLIST_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as WishlistProduct[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function minimalSnapshot(publicId: string): WishlistProduct {
+  return {
+    publicId,
+    slug: publicId,
+    name: "",
+    price: 0,
+    images: [],
+  };
+}
 
 export function WishlistProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
@@ -60,10 +83,11 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [wishlistBusyId, setWishlistBusyId] = useState<string | null>(null);
+  const [guestHydrated, setGuestHydrated] = useState(false);
 
   const refreshWishlist = useCallback(async () => {
     if (!isAuthenticated) {
-      setItems([]);
+      setLoading(false);
       setError(null);
       return;
     }
@@ -90,9 +114,52 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     }
   }, [isAuthenticated]);
 
-  useEffect(() => {
-    void refreshWishlist();
+  const mergeGuestWishlistAndFetch = useCallback(async () => {
+    const saved = loadGuestWishlist();
+    if (saved.length > 0) {
+      try {
+        for (const item of saved) {
+          const res = await authFetch(
+            `${getBrowserApiBase()}/user/wishlist/add`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ productId: item.publicId }),
+            }
+          );
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok || !json.success) {
+            const msg = String(json.message || "").toLowerCase();
+            if (!msg.includes("already")) {
+              setError(json.message || "Failed to merge wishlist item");
+            }
+          }
+        }
+        localStorage.removeItem(GUEST_WISHLIST_KEY);
+      } catch {
+        setError("Failed to merge wishlist");
+      }
+    }
+    await refreshWishlist();
   }, [refreshWishlist]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      setGuestHydrated(false);
+      void mergeGuestWishlistAndFetch();
+    } else {
+      setItems(loadGuestWishlist());
+      setError(null);
+      setLoading(false);
+      setGuestHydrated(true);
+    }
+  }, [isAuthenticated, mergeGuestWishlistAndFetch]);
+
+  useEffect(() => {
+    if (!isAuthenticated && guestHydrated) {
+      localStorage.setItem(GUEST_WISHLIST_KEY, JSON.stringify(items));
+    }
+  }, [items, isAuthenticated, guestHydrated]);
 
   const publicIdSet = useMemo(
     () => new Set(items.map((p) => p.publicId)),
@@ -105,11 +172,28 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   );
 
   const toggleWishlist = useCallback(
-    async (publicId: string): Promise<boolean> => {
+    async (publicId: string, snapshot?: WishlistProduct): Promise<boolean> => {
       if (!publicId?.trim()) return false;
 
       setWishlistBusyId(publicId);
+
       try {
+        if (!isAuthenticated) {
+          const listed = publicIdSet.has(publicId);
+          if (listed) {
+            setItems((prev) => prev.filter((p) => p.publicId !== publicId));
+            showToast("Removed from wishlist", "info");
+          } else {
+            const entry = snapshot ?? minimalSnapshot(publicId);
+            setItems((prev) => {
+              if (prev.some((p) => p.publicId === publicId)) return prev;
+              return [...prev, entry];
+            });
+            showToast("Added to wishlist", "success");
+          }
+          return true;
+        }
+
         const listed = publicIdSet.has(publicId);
         if (listed) {
           const res = await authFetch(
@@ -121,6 +205,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
             showToast(json.message || "Could not remove from wishlist", "error");
             return false;
           }
+          showToast("Removed from wishlist", "info");
         } else {
           const res = await authFetch(
             `${getBrowserApiBase()}/user/wishlist/add`,
@@ -135,6 +220,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
             showToast(json.message || "Could not add to wishlist", "error");
             return false;
           }
+          showToast("Added to wishlist", "success");
         }
         await refreshWishlist();
         return true;
@@ -145,7 +231,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
         setWishlistBusyId(null);
       }
     },
-    [publicIdSet, refreshWishlist, showToast]
+    [isAuthenticated, publicIdSet, refreshWishlist, showToast]
   );
 
   const value = useMemo<WishlistContextValue>(

@@ -14,9 +14,42 @@ import { useCart } from "@/context/CartContext";
 import { useToast } from "@/context/ToastContext";
 import { authFetch } from "@/lib/authFetch";
 import { getBrowserApiBase } from "@/lib/publicApiBase";
-import { CreditCard, Heart, Shield, Truck } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  CreditCard,
+  Heart,
+  Shield,
+  Truck,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+
+const TRUST_FEATURES: {
+  label: string;
+  Icon: LucideIcon;
+  iconClass: string;
+  bgClass: string;
+}[] = [
+  {
+    label: "Secure checkout",
+    Icon: Shield,
+    iconClass: "text-emerald-600",
+    bgClass: "bg-emerald-500/10",
+  },
+  {
+    label: "Fast delivery",
+    Icon: Truck,
+    iconClass: "text-sky-600",
+    bgClass: "bg-sky-500/10",
+  },
+  {
+    label: "Customer support",
+    Icon: Heart,
+    iconClass: "text-primary",
+    bgClass: "bg-primary/10",
+  },
+];
 
 /* ================= TYPES ================= */
 
@@ -167,6 +200,12 @@ export default function OrderSummary() {
         </div>
 
         {/* ADDRESS SELECTION */}
+        {!isAuthenticated && (
+          <p className="text-sm text-muted-foreground pt-2">
+            Sign in to complete your order.
+          </p>
+        )}
+
         {isAuthenticated && (
           <div className="space-y-2 pt-2">
             <p className="text-sm font-medium">Delivery Address</p>
@@ -174,7 +213,7 @@ export default function OrderSummary() {
               <p className="text-sm text-red-600">{addressError}</p>
             )}
             {addresses.length === 0 ? (
-              <Link href="/account" className="text-sm text-primary underline">
+              <Link href="/account?tab=addresses" className="text-sm text-primary underline">
                 No address found. Add address in account page.
               </Link>
             ) : null}
@@ -196,27 +235,49 @@ export default function OrderSummary() {
         <Button
           size="lg"
           className="w-full"
-          disabled={!isAuthenticated || placingOrder}
-          onClick={handlePlaceOrder}
+          disabled={isAuthenticated ? placingOrder : false}
+          onClick={() => {
+            if (!isAuthenticated) {
+              window.dispatchEvent(
+                new CustomEvent("open-auth-modal", { detail: { mode: "signin" } })
+              );
+              return;
+            }
+            void handlePlaceOrder();
+          }}
         >
           <CreditCard className="h-4 w-4 mr-2" />
-          {placingOrder ? "Placing Order..." : "Proceed to Checkout"}
+          {isAuthenticated
+            ? placingOrder
+              ? "Placing Order..."
+              : "Proceed to Checkout"
+            : "Sign in to checkout"}
         </Button>
 
         {/* TRUST */}
-        <div className="space-y-3 pt-4 border-t">
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <Shield className="h-4 w-4 text-green-500" />
-            Secure checkout
-          </div>
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <Truck className="h-4 w-4 text-blue-500" />
-            Fast delivery
-          </div>
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <Heart className="h-4 w-4 text-red-500" />
-            Customer support
-          </div>
+        <div className="grid grid-cols-3 gap-2 border-t pt-4 sm:gap-3">
+          {TRUST_FEATURES.map(({ label, Icon, iconClass, bgClass }) => (
+            <div
+              key={label}
+              className="flex min-w-0 flex-col items-center gap-2 text-center"
+            >
+              <span
+                className={cn(
+                  "flex size-11 items-center justify-center rounded-2xl sm:size-12",
+                  bgClass
+                )}
+                aria-hidden
+              >
+                <Icon
+                  className={cn("size-6 sm:size-7", iconClass)}
+                  strokeWidth={2.25}
+                />
+              </span>
+              <span className="text-[11px] font-medium leading-snug text-muted-foreground sm:text-xs">
+                {label}
+              </span>
+            </div>
+          ))}
         </div>
       </CardContent>
     </Card>

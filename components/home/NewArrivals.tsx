@@ -5,7 +5,7 @@ import { dedupeByPublicId } from "@/lib/dedupeByPublicId";
 import { getBrowserApiBase } from "@/lib/publicApiBase";
 import axios from "axios";
 import { useEffect, useState } from "react";
-import ProductCard from "./ProductCard";
+import NewArrivalCard from "./NewArrivalCard";
 
 type ListProduct = {
   publicId: string;
@@ -14,6 +14,7 @@ type ListProduct = {
   price: number;
   fromPrice?: number;
   toPrice?: number;
+  mrp?: number | null;
   defaultVariantPublicId?: string | null;
   description?: string;
   variantOptions?: {
@@ -59,7 +60,20 @@ export default function NewArrivals() {
           <div className="h-4 w-72 max-w-full animate-pulse rounded-md bg-muted/70" />
           <div className="mt-8 flex gap-5 overflow-hidden">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-[380px] w-[min(100%,280px)] shrink-0 animate-pulse rounded-xl bg-muted" />
+              <div
+                key={i}
+                className="w-[min(100%,280px)] shrink-0 snap-center sm:w-[260px] md:w-[272px] lg:w-[280px]"
+              >
+                <div className="flex flex-col gap-3">
+                  <div className="aspect-4/5 w-full animate-pulse rounded-xl bg-muted shadow-sm" />
+                  <div className="h-4 w-[92%] animate-pulse rounded bg-muted/90" />
+                  <div className="h-4 w-[70%] animate-pulse rounded bg-muted/80" />
+                  <div className="mt-1 flex gap-2">
+                    <div className="h-4 w-16 animate-pulse rounded bg-muted/70" />
+                    <div className="h-4 w-20 animate-pulse rounded bg-muted" />
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         </div>
@@ -102,12 +116,12 @@ export default function NewArrivals() {
             no-scrollbar -mx-4 px-4 lg:mx-0 lg:px-0
           "
         >
-          {products.map((product, index) => (
+          {products.map((product) => (
             <div
               key={product.publicId}
               className="w-[min(100%,280px)] shrink-0 snap-center sm:w-[260px] md:w-[272px] lg:w-[280px]"
             >
-              <ProductCard
+              <NewArrivalCard
                 product={{
                   publicId: product.publicId,
                   slug: product.slug,
@@ -115,14 +129,10 @@ export default function NewArrivals() {
                   price: product.price,
                   fromPrice: product.fromPrice,
                   toPrice: product.toPrice,
+                  mrp: product.mrp,
                   defaultVariantPublicId: product.defaultVariantPublicId,
-                  description: product.description,
-                  categoryLabel: product.categories?.[0]?.name,
                   variantOptions: product.variantOptions,
-                  image: product.images?.[0]?.url || "",
                   images: product.images,
-                  isFeatured: product.isFeatured,
-                  sectionBadge: index === 0 ? "new" : index === 1 ? "exclusive" : undefined,
                 }}
               />
             </div>

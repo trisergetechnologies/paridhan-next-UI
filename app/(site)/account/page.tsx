@@ -1,35 +1,44 @@
 "use client";
 
+import { AccountShell } from "@/components/account/AccountShell";
+import { AddressesTab } from "@/components/account/AddressesTab";
+import { ChangePasswordTab } from "@/components/account/ChangePasswordTab";
+import { PlaceholderTab } from "@/components/account/PlaceholderTab";
+import { ProfileDetailsTab } from "@/components/account/ProfileDetailsTab";
+import {
+  type AccountTabId,
+  type Address,
+  parseAccountTab,
+} from "@/components/account/types";
+import { useAuth } from "@/context/AuthContext";
 import { authFetch } from "@/lib/authFetch";
 import { getBrowserApiBase } from "@/lib/publicApiBase";
-import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { Check, Edit, Plus, Trash2, X } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useId, useState } from "react";
 
-/* ---------------- TYPES ---------------- */
-
-type Address = {
-  slug: string;
-  fullName: string;
-  phone: string;
-  street: string;
-  city: string;
-  state: string;
-  postalCode: string;
-  country: string;
-  isDefault: boolean;
+const EMPTY_ADDRESS_FORM: Address = {
+  slug: "",
+  fullName: "",
+  phone: "",
+  street: "",
+  city: "",
+  state: "",
+  postalCode: "",
+  country: "India",
+  isDefault: false,
 };
 
-/* ---------------- COMPONENT ---------------- */
-
-export default function AccountPage() {
+function AccountPageContent() {
   const { user, isAuthenticated } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const baseId = useId();
+  const panelId = `${baseId}-panel`;
 
-  /* ---------------- STATE ---------------- */
+  const tabFromUrl = parseAccountTab(searchParams.get("tab"));
+  const [activeTab, setActiveTab] = useState<AccountTabId>(
+    tabFromUrl ?? "profile"
+  );
 
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loadingAddresses, setLoadingAddresses] = useState(false);
@@ -37,18 +46,7 @@ export default function AccountPage() {
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
-
-  const [addressForm, setAddressForm] = useState<Address>({
-    slug: "",
-    fullName: "",
-    phone: "",
-    street: "",
-    city: "",
-    state: "",
-    postalCode: "",
-    country: "India",
-    isDefault: false,
-  });
+  const [addressForm, setAddressForm] = useState<Address>(EMPTY_ADDRESS_FORM);
   const [savingAddress, setSavingAddress] = useState(false);
 
   const [passwords, setPasswords] = useState({
@@ -57,13 +55,16 @@ export default function AccountPage() {
     confirm: "",
   });
 
-  /* ---------------- AUTH GUARD ---------------- */
-
   useEffect(() => {
     if (!isAuthenticated) router.replace("/");
   }, [isAuthenticated, router]);
 
-  const fetchAddresses = async () => {
+  useEffect(() => {
+    const parsed = parseAccountTab(searchParams.get("tab"));
+    if (parsed) setActiveTab(parsed);
+  }, [searchParams]);
+
+  const fetchAddresses = useCallback(async () => {
     try {
       setLoadingAddresses(true);
       const res = await authFetch(`${getBrowserApiBase()}/customer/address`);
@@ -80,36 +81,32 @@ export default function AccountPage() {
     } finally {
       setLoadingAddresses(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) fetchAddresses();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, fetchAddresses]);
 
-  if (!user) return null;
-
-  /* ---------------- ADDRESS HANDLERS ---------------- */
+  const handleTabChange = (tab: AccountTabId) => {
+    if (tab !== "addresses") {
+      setIsFormOpen(false);
+      setEditingSlug(null);
+    }
+    setActiveTab(tab);
+  };
 
   const openAddForm = () => {
     setEditingSlug(null);
-    setAddressForm({
-      slug: "",
-      fullName: "",
-      phone: "",
-      street: "",
-      city: "",
-      state: "",
-      postalCode: "",
-      country: "India",
-      isDefault: false,
-    });
+    setAddressForm({ ...EMPTY_ADDRESS_FORM });
     setIsFormOpen(true);
+    setActiveTab("addresses");
   };
 
   const openEditForm = (addr: Address) => {
     setEditingSlug(addr.slug);
     setAddressForm({ ...addr });
     setIsFormOpen(true);
+    setActiveTab("addresses");
   };
 
   const saveAddress = async () => {
@@ -165,9 +162,10 @@ export default function AccountPage() {
 
   const deleteAddress = async (slug: string) => {
     try {
-      const res = await authFetch(`${getBrowserApiBase()}/customer/address/${slug}`, {
-        method: "DELETE",
-      });
+      const res = await authFetch(
+        `${getBrowserApiBase()}/customer/address/${slug}`,
+        { method: "DELETE" }
+      );
       const json = await res.json();
       if (!res.ok || !json.success) {
         setAddressError(json.message || "Failed to delete address");
@@ -181,178 +179,91 @@ export default function AccountPage() {
     }
   };
 
-  /* ---------------- UI ---------------- */
+  if (!user) return null;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-12 space-y-14">
-      {/* ================= PROFILE ================= */}
-      <section className="grid md:grid-cols-[120px_1fr] gap-6 items-center">
-        <div className="relative w-28 h-28 rounded-full overflow-hidden bg-muted">
-          <Image
-            src="/images/profile.jpg"
-            alt="Profile"
-            fill
-            className="object-cover"
-          />
+    <div className="min-h-[60vh] bg-muted/25">
+      <div className="border-b border-border/80 bg-background/90 backdrop-blur-sm">
+        <div className="container mx-auto max-w-5xl px-4 py-10 md:py-12">
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.22em] text-primary">
+            Account
+          </p>
+          <h1 className="font-serif text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
+            My account
+          </h1>
+          <p className="mt-2 max-w-xl text-sm text-muted-foreground">
+            Manage your profile, delivery addresses, and account security.
+          </p>
         </div>
+      </div>
 
-        <div>
-          <h1 className="text-2xl font-semibold">{user.name}</h1>
-          <p className="text-muted-foreground">{user.email}</p>
-          {user.phone && (
-            <p className="text-muted-foreground mt-1">
-              +91 {user.phone}
-            </p>
+      <AccountShell
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        panelId={panelId}
+        baseId={baseId}
+      >
+        <div
+          id={panelId}
+          role="tabpanel"
+          aria-labelledby={`${baseId}-tab-${activeTab}`}
+          className="min-w-0 rounded-2xl border border-border/60 bg-card p-4 shadow-sm sm:p-6 md:p-8"
+        >
+          {activeTab === "profile" ? (
+            <ProfileDetailsTab user={user} />
+          ) : activeTab === "addresses" ? (
+            <AddressesTab
+              addresses={addresses}
+              loadingAddresses={loadingAddresses}
+              addressError={addressError}
+              isFormOpen={isFormOpen}
+              editingSlug={editingSlug}
+              addressForm={addressForm}
+              savingAddress={savingAddress}
+              onOpenAddForm={openAddForm}
+              onOpenEditForm={openEditForm}
+              onCloseForm={() => {
+                setIsFormOpen(false);
+                setEditingSlug(null);
+              }}
+              onFormChange={setAddressForm}
+              onSaveAddress={saveAddress}
+              onSetDefault={setDefaultAddress}
+              onDelete={deleteAddress}
+            />
+          ) : activeTab === "password" ? (
+            <ChangePasswordTab passwords={passwords} onChange={setPasswords} />
+          ) : activeTab === "help" ? (
+            <PlaceholderTab tab="help" />
+          ) : (
+            <PlaceholderTab tab="support" />
           )}
         </div>
-      </section>
-
-      {/* ================= ADDRESSES ================= */}
-      <section>
-        <div className="flex justify-between mb-4">
-          <h2 className="text-xl font-semibold">Saved Addresses</h2>
-          <Button size="sm" variant="outline" onClick={openAddForm}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add New Address
-          </Button>
-        </div>
-
-        <div className="space-y-4">
-          {addressError && (
-            <p className="text-sm text-red-600">{addressError}</p>
-          )}
-          {loadingAddresses && (
-            <p className="text-sm text-muted-foreground">Loading addresses...</p>
-          )}
-          {addresses.map((addr) => (
-            <div
-              key={addr.slug}
-              className="rounded-xl border bg-white p-5 flex gap-4"
-            >
-              <button onClick={() => setDefaultAddress(addr.slug)}>
-                {addr.isDefault ? (
-                  <Check className="h-5 w-5 text-primary" />
-                ) : (
-                  <div className="h-5 w-5 rounded-full border" />
-                )}
-              </button>
-
-              <div className="flex-1">
-                <p className="font-medium">{addr.fullName}</p>
-                <p className="text-sm text-muted-foreground">
-                  {addr.street}, {addr.city}, {addr.state} - {addr.postalCode}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {addr.phone} | {addr.slug}
-                </p>
-              </div>
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => openEditForm(addr)}
-                  className="text-sm text-primary flex items-center gap-1"
-                >
-                  <Edit className="h-4 w-4" />
-                  Edit
-                </button>
-                <button
-                  onClick={() => deleteAddress(addr.slug)}
-                  className="text-sm text-red-600 flex items-center gap-1"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* ADDRESS FORM */}
-        {isFormOpen && (
-          <div className="mt-6 rounded-xl border bg-white p-6 space-y-4 max-w-xl">
-            <h3 className="font-semibold">
-              {editingSlug ? "Edit Address" : "Add New Address"}
-            </h3>
-
-            {["slug", "fullName", "phone", "street", "city", "state", "postalCode", "country"].map((field) => (
-              <input
-                key={field}
-                placeholder={field.toUpperCase()}
-                className="w-full border rounded-lg px-4 py-2"
-                value={(addressForm as any)[field]}
-                onChange={(e) =>
-                  setAddressForm({
-                    ...addressForm,
-                    [field]: e.target.value,
-                  })
-                }
-              />
-            ))}
-
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={addressForm.isDefault}
-                onChange={(e) =>
-                  setAddressForm({
-                    ...addressForm,
-                    isDefault: e.target.checked,
-                  })
-                }
-              />
-              Set as default address
-            </label>
-
-            <div className="flex gap-3">
-              <Button onClick={saveAddress} disabled={savingAddress}>
-                {savingAddress ? "Saving..." : "Save Address"}
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => setIsFormOpen(false)}
-              >
-                <X className="h-4 w-4 mr-1" />
-                Cancel
-              </Button>
-            </div>
-          </div>
-        )}
-      </section>
-
-      {/* ================= CHANGE PASSWORD ================= */}
-      <section className="max-w-xl">
-        <h2 className="text-xl font-semibold mb-4">Change Password</h2>
-
-        <div className="rounded-xl border bg-white p-6 space-y-4">
-          <input
-            type="password"
-            placeholder="Current Password"
-            className="w-full border rounded-lg px-4 py-2"
-            value={passwords.current}
-            onChange={(e) =>
-              setPasswords({ ...passwords, current: e.target.value })
-            }
-          />
-          <input
-            type="password"
-            placeholder="New Password"
-            className="w-full border rounded-lg px-4 py-2"
-            value={passwords.next}
-            onChange={(e) =>
-              setPasswords({ ...passwords, next: e.target.value })
-            }
-          />
-          <input
-            type="password"
-            placeholder="Confirm New Password"
-            className="w-full border rounded-lg px-4 py-2"
-            value={passwords.confirm}
-            onChange={(e) =>
-              setPasswords({ ...passwords, confirm: e.target.value })
-            }
-          />
-          <Button>Update Password</Button>
-        </div>
-      </section>
+      </AccountShell>
     </div>
+  );
+}
+
+function AccountPageFallback() {
+  return (
+    <div className="min-h-[60vh] bg-muted/25">
+      <div className="border-b border-border/80 bg-background/90">
+        <div className="container mx-auto max-w-5xl px-4 py-10 md:py-12">
+          <div className="h-3 w-16 animate-pulse rounded bg-muted" />
+          <div className="mt-3 h-9 w-48 animate-pulse rounded bg-muted" />
+        </div>
+      </div>
+      <div className="container mx-auto max-w-5xl px-4 py-10">
+        <div className="h-64 animate-pulse rounded-2xl bg-muted" />
+      </div>
+    </div>
+  );
+}
+
+export default function AccountPage() {
+  return (
+    <Suspense fallback={<AccountPageFallback />}>
+      <AccountPageContent />
+    </Suspense>
   );
 }

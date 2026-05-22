@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Accounts",
+  title: "Account",
   description: "Manage your account of Paridhan Emporium",
 };
 

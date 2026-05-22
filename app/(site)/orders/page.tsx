@@ -12,6 +12,7 @@ import {
   paymentMethodLabel,
 } from "@/lib/orderDisplay";
 import { cn } from "@/lib/utils";
+import { OrderItemProductTitle } from "@/components/orders/OrderItemProductTitle";
 import {
   ChevronRight,
   Loader2,
@@ -30,6 +31,9 @@ type OrderItem = {
   quantity: number;
   price?: number;
   variantLabel?: string;
+  productId?: string;
+  productSlug?: string;
+  productPublicId?: string;
 };
 
 type ShippingSnapshot = {
@@ -351,13 +355,17 @@ export default function OrdersPage() {
                               key={`${order._id}-line-${idx}`}
                               className="text-sm"
                             >
-                              <p className="font-medium text-foreground line-clamp-2">
-                                {item.name}
-                                <span className="font-normal text-muted-foreground">
-                                  {" "}
-                                  · Qty {item.quantity}
-                                </span>
-                              </p>
+                              <OrderItemProductTitle
+                                name={item.name}
+                                quantity={item.quantity}
+                                productId={
+                                  item.productId != null
+                                    ? String(item.productId)
+                                    : undefined
+                                }
+                                productSlug={item.productSlug}
+                                productPublicId={item.productPublicId}
+                              />
                               {item.variantLabel ? (
                                 <p className="text-xs text-muted-foreground line-clamp-1">
                                   {item.variantLabel}

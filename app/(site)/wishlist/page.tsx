@@ -37,39 +37,6 @@ export default function WishlistPage() {
     );
   }
 
-  if (!isAuthenticated) {
-    return (
-      <div className="container mx-auto max-w-lg px-4 py-20 text-center">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <Heart className="h-7 w-7" strokeWidth={1.5} />
-        </div>
-        <h1 className="font-serif text-2xl font-semibold text-foreground">
-          Sign in to view your wishlist
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Your saved favourites are available on any device when you&apos;re
-          logged in.
-        </p>
-        <Button
-          className="mt-6"
-          type="button"
-          onClick={() =>
-            window.dispatchEvent(
-              new CustomEvent("open-auth-modal", { detail: { mode: "signin" } })
-            )
-          }
-        >
-          Sign in
-        </Button>
-        <p className="mt-4">
-          <Link href="/" className="text-sm text-primary hover:underline">
-            Back to shop
-          </Link>
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="bg-muted/30 min-h-[60vh]">
       <div className="border-b border-border/80 bg-background/80 backdrop-blur-sm">
@@ -86,21 +53,41 @@ export default function WishlistPage() {
                 Pieces you love, saved in one place. Open any item for full
                 details, options, and checkout.
               </p>
+              {!isAuthenticated ? (
+                <p className="mt-3 text-sm text-muted-foreground">
+                  <button
+                    type="button"
+                    className="text-primary font-medium hover:underline"
+                    onClick={() =>
+                      window.dispatchEvent(
+                        new CustomEvent("open-auth-modal", {
+                          detail: { mode: "signin" },
+                        })
+                      )
+                    }
+                  >
+                    Sign in
+                  </button>{" "}
+                  to sync across devices.
+                </p>
+              ) : null}
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <Button variant="outline" size="sm" asChild>
-                <Link href="/">Continue shopping</Link>
+                <Link href="/shop">Continue shopping</Link>
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground"
-                type="button"
-                onClick={() => void refreshWishlist()}
-                disabled={loading}
-              >
-                Refresh
-              </Button>
+              {isAuthenticated ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground"
+                  type="button"
+                  onClick={() => void refreshWishlist()}
+                  disabled={loading}
+                >
+                  Refresh
+                </Button>
+              ) : null}
             </div>
           </div>
         </div>
@@ -113,7 +100,7 @@ export default function WishlistPage() {
           </div>
         ) : null}
 
-        {loading && items.length === 0 ? (
+        {loading && isAuthenticated && items.length === 0 ? (
           <div className="flex justify-center py-24">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
           </div>
@@ -123,14 +110,13 @@ export default function WishlistPage() {
               <Heart className="h-7 w-7" strokeWidth={1.5} />
             </div>
             <h2 className="font-serif text-xl font-semibold text-foreground">
-              Nothing saved yet
+              Your wishlist is empty
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Tap the heart on any product to add it here. Your wishlist stays
-              private to your account.
+              Tap the heart on any product to save it here.
             </p>
             <Button className="mt-8" asChild>
-              <Link href="/">Explore the shop</Link>
+              <Link href="/shop">Explore the shop</Link>
             </Button>
           </div>
         ) : (

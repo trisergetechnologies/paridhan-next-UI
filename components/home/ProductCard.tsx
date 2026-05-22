@@ -1,14 +1,17 @@
 "use client";
 
-import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { cartLineId } from "@/lib/cartLineId";
+import { toWishlistSnapshot } from "@/lib/wishlistSnapshot";
 import { cn } from "@/lib/utils";
 import { Check, ChevronLeft, ChevronRight, Heart, ShoppingCart } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+/** Pixels of pointer movement before a horizontal gallery interaction counts as a drag (suppress card navigation). */
+const GALLERY_DRAG_THRESHOLD_PX = 10;
 
 export type ProductCardVariantOption = {
   publicId: string;
@@ -26,6 +29,8 @@ interface Product {
   price: number;
   fromPrice?: number;
   toPrice?: number;
+  /** Root-level stock when product has no variant options */
+  stock?: number;
   defaultVariantPublicId?: string | null;
   description?: string;
   categoryLabel?: string;
@@ -38,12 +43,13 @@ interface Product {
 
 export default function ProductCard({ product }: { product: Product }) {
   const { addToCart } = useCart();
-  const { isAuthenticated } = useAuth();
   const {
     isWishlisted,
     toggleWishlist,
     wishlistBusyId,
   } = useWishlist();
+
+  const productHref = `/product/${product.slug}`;
 
   const variantOpts = product.variantOptions ?? [];
   const hasVariants = variantOpts.length > 0;
@@ -69,6 +75,12 @@ export default function ProductCard({ product }: { product: Product }) {
   }, [product.images, product.image]);
 
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const galleryDragRef = useRef({
+    startX: 0,
+    startY: 0,
+    moved: false,
+    suppressNextClick: false,
+  });
   const [activeSlide, setActiveSlide] = useState(0);
 
   const scrollToSlide = useCallback(
@@ -102,16 +114,41 @@ export default function ProductCard({ product }: { product: Product }) {
 
   const cartImageUrl = imageUrls[activeSlide] ?? imageUrls[0] ?? product.image;
 
+  const handleGalleryPointerDown = useCallback((e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    galleryDragRef.current.startX = e.clientX;
+    galleryDragRef.current.startY = e.clientY;
+    galleryDragRef.current.moved = false;
+    galleryDragRef.current.suppressNextClick = false;
+  }, []);
+
+  const handleGalleryPointerMove = useCallback((e: React.PointerEvent) => {
+    const d = galleryDragRef.current;
+    const dx = Math.abs(e.clientX - d.startX);
+    const dy = Math.abs(e.clientY - d.startY);
+    if (dx > GALLERY_DRAG_THRESHOLD_PX || dy > GALLERY_DRAG_THRESHOLD_PX) {
+      d.moved = true;
+    }
+  }, []);
+
+  const handleGalleryPointerUp = useCallback(() => {
+    const d = galleryDragRef.current;
+    if (d.moved) {
+      d.suppressNextClick = true;
+      d.moved = false;
+    }
+  }, []);
+
+  const handleGalleryClickCapture = useCallback((e: React.MouseEvent) => {
+    if (!galleryDragRef.current.suppressNextClick) return;
+    e.preventDefault();
+    e.stopPropagation();
+    galleryDragRef.current.suppressNextClick = false;
+  }, []);
+
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-
-    if (!isAuthenticated) {
-      window.dispatchEvent(
-        new CustomEvent("open-auth-modal", { detail: { mode: "signin" } })
-      );
-      return;
-    }
 
     setIsAdding(true);
     await new Promise((r) => setTimeout(r, 200));
@@ -122,14 +159,21 @@ export default function ProductCard({ product }: { product: Product }) {
       return;
     }
 
+    const stockForLine = hasVariants
+      ? Number(defaultOption?.stock) || 0
+      : Number(product.stock) || 0;
+    const maxQuantity = Math.min(50, Math.max(0, stockForLine));
+
     addToCart({
       id: cartLineId(product.publicId, vid),
       productId: product.publicId,
+      productSlug: product.slug,
       variantPublicId: vid,
       name: product.name,
       price: displayPrice,
       image: cartImageUrl,
       quantity: 1,
+      maxQuantity,
     });
 
     setIsAdding(false);
@@ -141,14 +185,25 @@ export default function ProductCard({ product }: { product: Product }) {
     e.preventDefault();
     e.stopPropagation();
 
-    if (!isAuthenticated) {
-      window.dispatchEvent(
-        new CustomEvent("open-auth-modal", { detail: { mode: "signin" } })
-      );
-      return;
-    }
-
-    void toggleWishlist(product.publicId);
+    void toggleWishlist(
+      product.publicId,
+      toWishlistSnapshot({
+        publicId: product.publicId,
+        slug: product.slug,
+        name: product.name,
+        price: displayPrice,
+        fromPrice: product.fromPrice,
+        toPrice: product.toPrice,
+        description: product.description,
+        defaultVariantPublicId: product.defaultVariantPublicId,
+        images: product.images ?? (product.image ? [{ url: product.image }] : []),
+        variantOptions: product.variantOptions,
+        isFeatured: product.isFeatured,
+        categories: product.categoryLabel
+          ? [{ name: product.categoryLabel }]
+          : undefined,
+      })
+    );
   };
 
   const liked = isWishlisted(product.publicId);
@@ -156,21 +211,16 @@ export default function ProductCard({ product }: { product: Product }) {
 
   const multiImage = imageUrls.length > 1;
 
-  const openProduct = (e: React.MouseEvent) => {
-    if (!isAuthenticated) {
-      e.preventDefault();
-      window.dispatchEvent(
-        new CustomEvent("open-auth-modal", { detail: { mode: "signin" } })
-      );
-    }
-  };
-
   return (
-    <div
+    <Link
+      href={productHref}
+      aria-label={`View product: ${product.name}`}
+      prefetch={false}
       className={cn(
-        "group/lux relative flex flex-col overflow-hidden rounded border border-border/80 bg-card text-card-foreground shadow-sm",
+        "group/lux relative flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded border border-border/80 bg-card text-card-foreground shadow-sm",
         "transition-[transform,box-shadow] duration-300 ease-out",
-        "hover:-translate-y-1 hover:shadow-xl hover:border-primary/20"
+        "hover:-translate-y-1 hover:shadow-xl hover:border-primary/20",
+        "outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
       )}
     >
       {/* Image — fixed visual height like luxury retail tiles */}
@@ -187,7 +237,7 @@ export default function ProductCard({ product }: { product: Product }) {
         {product.sectionBadge ? (
           <div
             className={cn(
-              "absolute left-3 top-3 z-[3] px-2.5 py-1 text-[10px] font-medium uppercase tracking-widest",
+              "pointer-events-none absolute left-3 top-3 z-[3] px-2.5 py-1 text-[10px] font-medium uppercase tracking-widest",
               product.sectionBadge === "new"
                 ? "bg-primary text-primary-foreground"
                 : "bg-foreground text-background"
@@ -198,7 +248,7 @@ export default function ProductCard({ product }: { product: Product }) {
         ) : null}
 
         {product.isFeatured ? (
-          <div className="absolute right-3 top-3 z-[3] bg-primary px-2.5 py-1 text-[10px] font-medium uppercase tracking-widest text-primary-foreground">
+          <div className="pointer-events-none absolute right-3 top-3 z-[3] bg-primary px-2.5 py-1 text-[10px] font-medium uppercase tracking-widest text-primary-foreground">
             Featured
           </div>
         ) : null}
@@ -212,6 +262,11 @@ export default function ProductCard({ product }: { product: Product }) {
             <div
               ref={scrollerRef}
               onScroll={onScrollGallery}
+              onPointerDown={multiImage ? handleGalleryPointerDown : undefined}
+              onPointerMove={multiImage ? handleGalleryPointerMove : undefined}
+              onPointerUp={multiImage ? handleGalleryPointerUp : undefined}
+              onPointerCancel={multiImage ? handleGalleryPointerUp : undefined}
+              onClickCapture={multiImage ? handleGalleryClickCapture : undefined}
               className={cn(
                 "flex h-full w-full overflow-x-auto overflow-y-hidden snap-x snap-mandatory scroll-smooth",
                 "scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
@@ -225,7 +280,7 @@ export default function ProductCard({ product }: { product: Product }) {
                   {!slideErrors[idx] ? (
                     <Image
                       src={url}
-                      alt={`${product.name} — ${idx + 1}`}
+                      alt=""
                       fill
                       className="object-cover transition-transform duration-500 ease-out group-hover/lux:scale-[1.04]"
                       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
@@ -311,16 +366,15 @@ export default function ProductCard({ product }: { product: Product }) {
 
       {/* Info block — luxury retail spacing */}
       <div className="relative flex flex-1 flex-col p-4 pt-3.5">
-        <Link
-          href={`/product/${product.slug}`}
-          onClick={openProduct}
+        <span
+          aria-hidden
           className={cn(
             "font-serif block text-lg font-normal leading-snug tracking-wide text-foreground line-clamp-2",
-            "transition-colors hover:text-primary"
+            "transition-colors group-hover/lux:text-primary"
           )}
         >
           {product.name}
-        </Link>
+        </span>
 
         {product.categoryLabel ? (
           <p className="mt-1.5 text-[10px] font-medium uppercase tracking-[0.2em] text-primary">
@@ -354,12 +408,11 @@ export default function ProductCard({ product }: { product: Product }) {
         )}
 
         <div className="mt-4 flex items-center justify-between gap-2 border-t border-border/60 pt-3.5">
-          <Link
-            href={`/product/${product.slug}`}
-            onClick={openProduct}
+          <span
+            aria-hidden
             className={cn(
               "group/vd relative bg-transparent p-0 text-left text-xs font-medium uppercase tracking-[0.15em] text-foreground",
-              "transition-colors hover:text-primary"
+              "transition-colors group-hover/lux:text-primary"
             )}
           >
             View details
@@ -370,9 +423,9 @@ export default function ProductCard({ product }: { product: Product }) {
               )}
               aria-hidden
             />
-          </Link>
+          </span>
 
-          <div className="flex items-center gap-1">
+          <div className="relative z-[2] flex items-center gap-1">
             <button
               type="button"
               onClick={handleWishlist}
@@ -421,6 +474,6 @@ export default function ProductCard({ product }: { product: Product }) {
           </div>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }

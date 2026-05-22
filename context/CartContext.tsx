@@ -5,13 +5,36 @@ import { authFetch } from "@/lib/authFetch";
 import { getBrowserApiBase } from "@/lib/publicApiBase";
 import { cartLineId, parseCartLineId } from "@/lib/cartLineId";
 import { useToast } from "./ToastContext";
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+
+const MAX_LINE_ORDER = 50;
+
+function mergeMaxQuantity(
+  a: number | undefined,
+  b: number | undefined
+): number | undefined {
+  const ca = a != null ? Math.min(MAX_LINE_ORDER, Math.max(0, a)) : undefined;
+  const cb = b != null ? Math.min(MAX_LINE_ORDER, Math.max(0, b)) : undefined;
+  if (ca == null) return cb;
+  if (cb == null) return ca;
+  return Math.min(ca, cb);
+}
 
 /* ================= TYPES ================= */
 
 export interface CartItem {
   id: string;
   productId: string;
+  /** URL segment for `/product/[slug]`; cart APIs still use `productId` (publicId). */
+  productSlug?: string;
+  /** Upper bound for line qty: min(50, stock). From API or set when adding as guest. */
+  maxQuantity?: number;
   variantPublicId?: string;
   variantLabel?: string;
   name: string;
@@ -39,17 +62,46 @@ const CartContext = createContext<CartContextProps | undefined>(undefined);
 
 /* ================= HELPERS ================= */
 
-const mapBackendCart = (backendCart: any): CartItem[] => {
+type BackendCartItem = {
+  productId?: string | null;
+  productSlug?: string | null;
+  maxQuantity?: number | null;
+  variantPublicId?: string | null;
+  variantLabel?: string;
+  name: string;
+  price: number;
+  image: string;
+  quantity: number;
+};
+
+type BackendCartPayload = {
+  items?: BackendCartItem[];
+};
+
+const mapBackendCart = (backendCart: BackendCartPayload | null | undefined): CartItem[] => {
   if (!backendCart?.items) return [];
 
-  return backendCart.items.map((item: any) => {
+  return backendCart.items.map((item) => {
     const productId = String(item.productId ?? "");
     const variantPublicId = item.variantPublicId
       ? String(item.variantPublicId)
       : undefined;
+    const productSlug =
+      item.productSlug != null && String(item.productSlug).trim()
+        ? String(item.productSlug).trim()
+        : undefined;
+    const maxQuantity =
+      item.maxQuantity != null && Number.isFinite(Number(item.maxQuantity))
+        ? Math.min(
+            MAX_LINE_ORDER,
+            Math.max(0, Math.floor(Number(item.maxQuantity)))
+          )
+        : undefined;
     return {
       id: cartLineId(productId, variantPublicId),
       productId,
+      productSlug,
+      maxQuantity,
       variantPublicId,
       variantLabel: item.variantLabel,
       name: item.name,
@@ -66,6 +118,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, user } = useAuth();
   const { showToast } = useToast();
   const [cart, setCart] = useState<CartItem[]>([]);
+  const cartRef = useRef<CartItem[]>([]);
+  cartRef.current = cart;
   const [cartError, setCartError] = useState<string | null>(null);
   const [pricing, setPricing] = useState({
     itemsTotal: 0,
@@ -165,11 +219,21 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       setCart((prev) => {
         const existing = prev.find((i) => i.id === lineId);
         if (existing) {
-          return prev.map((i) =>
-            i.id === lineId
-              ? { ...i, quantity: i.quantity + (item.quantity || 1) }
-              : i
-          );
+          return prev.map((i) => {
+            if (i.id !== lineId) return i;
+            const cap = mergeMaxQuantity(i.maxQuantity, item.maxQuantity);
+            const upper = Math.min(
+              MAX_LINE_ORDER,
+              cap != null ? cap : MAX_LINE_ORDER
+            );
+            const mergedQty = i.quantity + (item.quantity || 1);
+            return {
+              ...i,
+              quantity: Math.min(mergedQty, Math.max(upper, 1)),
+              productSlug: item.productSlug ?? i.productSlug,
+              maxQuantity: cap ?? i.maxQuantity ?? item.maxQuantity,
+            };
+          });
         }
         return [
           ...prev,
@@ -177,10 +241,13 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
             ...item,
             id: lineId,
             productId,
+            productSlug: item.productSlug,
+            maxQuantity: item.maxQuantity,
             quantity: item.quantity || 1,
           },
         ];
       });
+      showToast("Added to cart", "success");
       return;
     }
     if (user?.activeRole !== "customer") {
@@ -206,6 +273,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       if (!res.ok || !json.success) {
         setCartError(json.message || `Add to cart failed (${res.status})`);
         showToast(json.message || "Add to cart failed", "error");
+        await fetchCartFromBackend();
         return;
       }
       setCartError(null);
@@ -214,6 +282,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       fetchCartFromBackend();
     } catch (error) {
       console.error("Add to cart failed:", error);
+      await fetchCartFromBackend();
     }
   };
 
@@ -291,9 +360,16 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
     if (!isAuthenticated) {
       setCart((prev) =>
-        prev.map((item) =>
-          item.id === id ? { ...item, quantity: Math.max(1, quantity) } : item
-        )
+        prev.map((item) => {
+          if (item.id !== id) return item;
+          const cap =
+            item.maxQuantity != null
+              ? Math.min(MAX_LINE_ORDER, Math.max(0, item.maxQuantity))
+              : MAX_LINE_ORDER;
+          const upper = Math.max(cap, 1);
+          const next = Math.max(1, Math.min(Math.floor(quantity), upper));
+          return { ...item, quantity: next };
+        })
       );
       return;
     }
@@ -301,6 +377,14 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       setCartError("Cart is available only in customer mode");
       return;
     }
+
+    const line = cartRef.current.find((i) => i.id === id);
+    const cap =
+      line?.maxQuantity != null
+        ? Math.min(MAX_LINE_ORDER, Math.max(0, line.maxQuantity))
+        : MAX_LINE_ORDER;
+    const upper = Math.max(cap, 1);
+    const target = Math.max(1, Math.min(Math.floor(quantity), upper));
 
     try {
       const res = await authFetch(`${getBrowserApiBase()}/customer/cart`, {
@@ -310,7 +394,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         },
         body: JSON.stringify({
           productId,
-          quantity,
+          quantity: target,
+          setQuantity: true,
           ...(variantPublicId ? { variantPublicId } : {}),
         }),
       });
@@ -318,6 +403,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       if (!res.ok || !json.success) {
         setCartError(json.message || `Update quantity failed (${res.status})`);
         showToast(json.message || "Update quantity failed", "error");
+        await fetchCartFromBackend();
         return;
       }
       setCartError(null);
@@ -326,6 +412,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       fetchCartFromBackend();
     } catch (error) {
       console.error("Update quantity failed:", error);
+      await fetchCartFromBackend();
     }
   };
 

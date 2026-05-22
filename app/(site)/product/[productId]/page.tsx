@@ -1,16 +1,19 @@
 "use client";
 
+import ProductDetailInfoTabs from "@/components/product/ProductDetailInfoTabs";
 import ProductImageGallery from "@/components/product/ProductImageGallery";
 import ProductNotFound from "@/components/product/ProductNotFound";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
+import { useWishlist } from "@/context/WishlistContext";
 import { cartLineId } from "@/lib/cartLineId";
+import { toWishlistSnapshot } from "@/lib/wishlistSnapshot";
 import { getBrowserApiBase } from "@/lib/publicApiBase";
 import { cn } from "@/lib/utils";
 import axios from "axios";
-import { Check, Minus, Plus, Settings2, ShoppingCart, Star } from "lucide-react";
+import { Check, Heart, MapPin, Minus, Plus, Settings2, ShoppingCart, Star } from "lucide-react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -24,6 +27,23 @@ type VariantDto = {
   effectiveImages?: { url?: string; alt?: string }[];
 };
 
+/** API payload for `/public/products/single/:id` (fields used on this page). */
+type ProductDetailPayload = {
+  publicId: string;
+  slug: string;
+  name: string;
+  description?: string;
+  price?: number;
+  mrp?: number | null;
+  stock?: number;
+  defaultVariantPublicId?: string;
+  fabric?: string;
+  color?: string;
+  categories?: { name?: string }[];
+  images?: { url?: string }[];
+  variants?: VariantDto[];
+};
+
 function variantOptionLabel(v: VariantDto) {
   if (v.attributes?.length) {
     return v.attributes.map((a) => a.value).join(" · ");
@@ -31,30 +51,45 @@ function variantOptionLabel(v: VariantDto) {
   return v.publicId;
 }
 
+/** Placeholder until logistics API returns real ETA. */
+const ESTIMATED_DELIVERY = new Date("2026-05-21T12:00:00");
+const ESTIMATED_DELIVERY_LABEL = `Estimated delivery: ${ESTIMATED_DELIVERY.toLocaleDateString("en-IN", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+})}`;
+
 export default function Product() {
   const { productId } = useParams();
   const router = useRouter();
   const { addToCart } = useCart();
-  const { isAuthenticated } = useAuth();
+  const { isWishlisted, toggleWishlist, wishlistBusyId } = useWishlist();
 
-  const [product, setProduct] = useState<any>(null);
+  const [product, setProduct] = useState<ProductDetailPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedVariantId, setSelectedVariantId] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
+  const [pinInput, setPinInput] = useState("");
+  const [deliveryChecked, setDeliveryChecked] = useState(false);
+  const [pinHelper, setPinHelper] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
     setProduct(null);
     axios
       .get(`${getBrowserApiBase()}/public/products/single/${productId}`)
-      .then((res) => setProduct(res.data.data))
+      .then((res) => setProduct(res.data.data as ProductDetailPayload))
       .catch(() => setProduct(null))
       .finally(() => setLoading(false));
   }, [productId]);
 
-  const variants: VariantDto[] = product?.variants ?? [];
+  const variants = useMemo(
+    () => (product?.variants ?? []) as VariantDto[],
+    [product?.variants]
+  );
   const hasVariants = variants.length > 0;
 
   useEffect(() => {
@@ -108,16 +143,20 @@ export default function Product() {
       product.images?.[0]?.url ||
       "";
 
+    const maxQuantity = Math.min(50, Math.max(0, stockAvailable));
+
     await addToCart({
       id: hasVariants
         ? cartLineId(product.publicId, selectedVariant?.publicId)
         : cartLineId(product.publicId),
       productId: product.publicId,
+      productSlug: product.slug,
       variantPublicId: selectedVariant?.publicId,
       name: product.name,
       price: unitPrice,
       image: img,
       quantity: qty,
+      maxQuantity,
     });
 
     setIsAdding(false);
@@ -133,11 +172,39 @@ export default function Product() {
     taglineParts.length > 0 ? taglineParts.join(" · ") : null;
 
   const firstCategory = product.categories?.[0]?.name;
+  const liked = isWishlisted(product.publicId);
+  const wishBusy = wishlistBusyId === product.publicId;
+
+  const handleWishlistToggle = () => {
+    void toggleWishlist(
+      product.publicId,
+      toWishlistSnapshot({
+        publicId: product.publicId,
+        slug: product.slug,
+        name: product.name,
+        description: product.description,
+        price: unitPrice,
+        mrp: displayMrp,
+        defaultVariantPublicId:
+          selectedVariant?.publicId ?? product.defaultVariantPublicId,
+        images: galleryImages.length ? galleryImages : product.images,
+        categories: product.categories?.map((c) => ({ name: c.name })),
+        variantOptions: hasVariants
+          ? variants.map((v) => ({
+              publicId: v.publicId,
+              label: variantOptionLabel(v),
+              price: v.price,
+              stock: v.stock,
+            }))
+          : undefined,
+      })
+    );
+  };
 
   return (
-    <div className="container mx-auto px-4 py-8 md:py-12">
-      <div className="grid gap-10 lg:gap-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start">
-        <div className="lg:sticky lg:top-24">
+    <div className="container mx-auto min-w-0 max-w-full overflow-x-hidden px-4 py-8 md:py-12">
+      <div className="grid min-w-0 max-w-full gap-10 lg:gap-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start">
+        <div className="min-w-0 max-w-full lg:sticky lg:top-24">
           <ProductImageGallery
             images={galleryImages}
             productName={product.name}
@@ -145,7 +212,7 @@ export default function Product() {
           />
         </div>
 
-        <div className="space-y-6 md:space-y-8">
+        <div className="min-w-0 max-w-full space-y-6 md:space-y-8">
           <div className="flex justify-end border-b border-border/60 pb-3">
             <a
               href="#product-details"
@@ -158,27 +225,46 @@ export default function Product() {
 
           <div>
             {firstCategory ? (
-              <p className="text-sm font-semibold uppercase tracking-wide text-primary/90 mb-1">
+              <p className="text-sm font-semibold uppercase tracking-wide text-primary/90">
                 {firstCategory}
               </p>
             ) : null}
-            <h1 className="font-serif text-3xl md:text-4xl font-semibold tracking-tight text-foreground leading-tight">
-              {product.name}
-            </h1>
+            <div className="flex items-start justify-between gap-3 sm:items-center">
+              <h1 className="min-w-0 flex-1 break-words font-serif text-3xl font-semibold leading-tight tracking-tight text-foreground md:text-4xl">
+                {product.name}
+              </h1>
+              <button
+                type="button"
+                onClick={handleWishlistToggle}
+                disabled={wishBusy}
+                className={cn(
+                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border/80 bg-background/95 text-muted-foreground shadow-sm backdrop-blur-sm sm:h-8 sm:w-8",
+                  "transition hover:scale-105 hover:text-primary disabled:pointer-events-none disabled:opacity-50",
+                  liked && "text-primary"
+                )}
+                aria-label={liked ? "Remove from wishlist" : "Add to wishlist"}
+              >
+                {wishBusy ? (
+                  <span className="h-3 w-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Heart className={cn("h-4 w-4", liked && "fill-current")} />
+                )}
+              </button>
+            </div>
             {tagline ? (
-              <p className="mt-2 text-base text-muted-foreground">{tagline}</p>
+              <p className="mt-1 break-words text-base text-muted-foreground">{tagline}</p>
             ) : null}
           </div>
 
-          <div className="flex flex-wrap items-center gap-1 text-amber-500">
+          <div className="-mt-2 flex flex-wrap items-center gap-1 text-amber-500">
             {[...Array(5)].map((_, i) => (
               <Star key={i} className="h-5 w-5 fill-current" />
             ))}
-            <span className="ml-2 text-sm text-muted-foreground">Customer favourite</span>
+            <span className="ml-1 text-sm text-muted-foreground">Customer favourite</span>
           </div>
 
           <div id="product-details" className="scroll-mt-28">
-            <p className="text-sm md:text-base text-foreground/90 leading-relaxed whitespace-pre-line">
+            <p className="max-w-full break-words text-sm leading-relaxed text-foreground/90 whitespace-pre-line md:text-base">
               {product.description}
             </p>
           </div>
@@ -199,43 +285,57 @@ export default function Product() {
             </p>
           </div>
 
-          {hasVariants ? (
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-foreground">Choose your option</p>
-              <div className="flex flex-wrap gap-2">
-                {variants.map((v) => {
-                  const active = v.publicId === selectedVariant?.publicId;
-                  const label = variantOptionLabel(v);
-                  return (
-                    <button
-                      key={v.publicId}
-                      type="button"
-                      onClick={() => {
-                        setSelectedVariantId(v.publicId);
-                        setQuantity(1);
-                      }}
-                      className={cn(
-                        "flex min-w-[5.5rem] max-w-[11rem] flex-col rounded-xl border px-3 py-2.5 text-left transition shadow-sm",
-                        active
-                          ? "border-primary bg-primary/10 ring-2 ring-primary/35"
-                          : "border-border/80 bg-card hover:border-primary/40 hover:bg-muted/50"
-                      )}
-                    >
-                      <span className="text-xs font-medium text-foreground line-clamp-2 leading-snug">
-                        {label}
-                      </span>
-                      <span className="mt-1 text-xs font-semibold text-primary tabular-nums">
-                        ₹{Math.round(v.price).toLocaleString("en-IN")}
-                      </span>
-                      <span className="mt-0.5 text-[10px] text-muted-foreground tabular-nums">
-                        {v.stock < 1 ? "Out of stock" : `${v.stock} left`}
-                      </span>
-                    </button>
-                  );
-                })}
+          <div className="max-w-full rounded-xl border border-border/60 bg-muted/30 p-4 shadow-sm md:p-5">
+            <h2 className="mb-3 text-sm font-semibold text-foreground sm:text-base">Check Delivery Available</h2>
+            <form
+              className="flex flex-col gap-2 sm:flex-row sm:items-stretch sm:gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const pin = pinInput.trim();
+                if (!pin) {
+                  setPinHelper("Please enter a PIN code.");
+                  return;
+                }
+                setPinHelper(null);
+                setDeliveryChecked(true);
+              }}
+            >
+              <label htmlFor="delivery-pin" className="sr-only">
+                Area PIN code for delivery check
+              </label>
+              <Input
+                id="delivery-pin"
+                value={pinInput}
+                onChange={(e) => {
+                  setPinInput(e.target.value);
+                  if (pinHelper) setPinHelper(null);
+                }}
+                placeholder="Enter your area pin code"
+                inputMode="numeric"
+                maxLength={6}
+                autoComplete="postal-code"
+                className="min-h-10 min-w-0 flex-1 bg-background"
+              />
+              <Button type="submit" variant="default" className="h-10 shrink-0 sm:min-w-22">
+                Check
+              </Button>
+            </form>
+            {pinHelper ? <p className="mt-1 text-xs text-muted-foreground">{pinHelper}</p> : null}
+            {deliveryChecked ? (
+              <div className="mt-3 min-w-0 max-w-full">
+                <p className="text-pretty text-sm text-muted-foreground break-words">{ESTIMATED_DELIVERY_LABEL}</p>
+                <Link
+                  href="/account?tab=addresses"
+                  className="mt-3 inline-flex max-w-full min-w-0 items-center gap-2 break-words text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                >
+                  <MapPin className="size-4 shrink-0" aria-hidden />
+                  Add New Address
+                </Link>
               </div>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
+
+          {/**stock quantity and cart, buy option */}
 
           <p className="text-xs text-muted-foreground">
             {stockAvailable < 1
@@ -243,8 +343,8 @@ export default function Product() {
               : `${stockAvailable} available for this selection`}
           </p>
 
-          <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6">
-            <div className="space-y-2">
+          <div className="flex min-w-0 max-w-full flex-col gap-4 sm:flex-row sm:items-end sm:gap-6">
+            <div className="min-w-0 shrink-0 space-y-2">
               <label htmlFor="qty" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Quantity
               </label>
@@ -280,31 +380,23 @@ export default function Product() {
               </div>
             </div>
 
-            <div className="flex flex-1 flex-col sm:flex-row gap-3 sm:items-stretch">
+            <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:items-stretch">
               <Button
                 size="lg"
                 className={cn(
-                  "flex-1 h-12 text-base font-semibold shadow-md",
+                  "h-12 min-w-0 w-full justify-center px-4 text-base font-semibold shadow-md sm:min-h-12 sm:flex-1 sm:px-10",
                   justAdded && "bg-green-600 hover:bg-green-600"
                 )}
                 disabled={stockAvailable < 1 || isAdding}
-                onClick={() => {
-                  if (!isAuthenticated) {
-                    window.dispatchEvent(
-                      new CustomEvent("open-auth-modal", { detail: { mode: "signin" } })
-                    );
-                    return;
-                  }
-                  void handleAddToCart();
-                }}
+                onClick={() => void handleAddToCart()}
               >
                 {justAdded ? (
                   <>
-                    <Check className="mr-2 h-5 w-5" /> Added to cart
+                    <Check className="h-5 w-5 shrink-0" aria-hidden /> Added to cart
                   </>
                 ) : (
                   <>
-                    <ShoppingCart className="mr-2 h-5 w-5" /> Add to cart
+                    <ShoppingCart className="h-5 w-5 shrink-0" aria-hidden /> Add to cart
                   </>
                 )}
               </Button>
@@ -312,14 +404,9 @@ export default function Product() {
               <Button
                 variant="outline"
                 size="lg"
-                className="h-12 sm:min-w-[140px] border-primary/30 font-semibold"
-                onClick={() => {
-                  if (!isAuthenticated) {
-                    window.dispatchEvent(
-                      new CustomEvent("open-auth-modal", { detail: { mode: "signin" } })
-                    );
-                    return;
-                  }
+                className="h-12 min-w-0 w-full justify-center px-4 font-semibold border-primary/30 sm:w-auto sm:min-w-36 sm:flex-1 sm:px-10"
+                onClick={async () => {
+                  await handleAddToCart();
                   router.push("/cart");
                 }}
               >
@@ -327,6 +414,46 @@ export default function Product() {
               </Button>
             </div>
           </div>
+
+          {/*variety section */}
+          {hasVariants ? (
+            <div className="min-w-0 max-w-full space-y-3">
+              <p className="text-sm font-semibold text-foreground">Choose your option</p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {variants.map((v) => {
+                  const active = v.publicId === selectedVariant?.publicId;
+                  const label = variantOptionLabel(v);
+                  return (
+                    <button
+                      key={v.publicId}
+                      type="button"
+                      onClick={() => {
+                        setSelectedVariantId(v.publicId);
+                        setQuantity(1);
+                      }}
+                      className={cn(
+                        "flex min-w-0 w-full flex-col rounded-xl border px-3 py-2.5 text-left transition shadow-sm",
+                        active
+                          ? "border-primary bg-primary/10 ring-2 ring-primary/35"
+                          : "border-border/80 bg-card hover:border-primary/40 hover:bg-muted/50"
+                      )}
+                    >
+                      <span className="text-xs font-medium text-foreground line-clamp-2 leading-snug">
+                        {label}
+                      </span>
+                      <span className="mt-1 text-xs font-semibold text-primary tabular-nums">
+                        ₹{Math.round(v.price).toLocaleString("en-IN")}
+                      </span>
+                      <span className="mt-0.5 text-[10px] text-muted-foreground tabular-nums">
+                        {v.stock < 1 ? "Out of stock" : `${v.stock} left`}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+          <ProductDetailInfoTabs />
         </div>
       </div>
     </div>

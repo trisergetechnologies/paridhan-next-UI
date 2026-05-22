@@ -150,14 +150,14 @@ export default function Footer() {
               <h4 className="mb-4 text-sm font-semibold uppercase tracking-wider text-foreground">Shop</h4>
               <ul className="space-y-3">
                 <li>
-                  <Link href="/" className="text-sm text-muted-foreground transition hover:text-foreground">
+                  <Link href="/shop" className="text-sm text-muted-foreground transition hover:text-foreground">
                     All products
                   </Link>
                 </li>
                 {categories.map((c) => (
                   <li key={c._id}>
                     <Link
-                      href={`/?category=${c._id}`}
+                      href={`/shop?category=${c._id}`}
                       className="text-sm text-muted-foreground transition hover:text-foreground"
                     >
                       {c.name}
