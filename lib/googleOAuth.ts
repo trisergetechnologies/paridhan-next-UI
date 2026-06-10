@@ -7,7 +7,7 @@ export function getGoogleOAuthStartUrl(options?: { returnTo?: string }) {
   }
   const params = new URLSearchParams({
     client: "storefront",
-    returnTo: options?.returnTo || "/shop",
+    returnTo: options?.returnTo || "/",
   });
   return `${base}/auth/google?${params.toString()}`;
 }

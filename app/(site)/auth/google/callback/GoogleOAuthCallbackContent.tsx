@@ -6,10 +6,10 @@ import { markPhonePromptAfterAuth, userNeedsPhone } from "@/lib/authPhonePrompt"
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-const DEFAULT_AFTER_LOGIN = "/shop";
+const DEFAULT_AFTER_LOGIN = "/";
 
 function resolveReturnPath(returnTo: string | null) {
-  if (!returnTo || returnTo === "/" || !returnTo.startsWith("/") || returnTo.startsWith("//")) {
+  if (!returnTo || !returnTo.startsWith("/") || returnTo.startsWith("//")) {
     return DEFAULT_AFTER_LOGIN;
   }
   return returnTo;
