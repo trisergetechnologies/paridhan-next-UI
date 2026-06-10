@@ -1,11 +1,32 @@
+function ensureUrlProtocol(value: string): string {
+  if (/^https?:\/\//i.test(value)) return value;
+  const isLocal =
+    /^localhost(?::\d+)?(\/|$)/i.test(value) ||
+    /^127\.0\.0\.1(?::\d+)?(\/|$)/.test(value);
+  return `${isLocal ? "http" : "https"}://${value}`;
+}
+
 /**
- * Normalize API base: trim, strip trailing slash, append /api/v1 if only a host/origin was given.
+ * Normalize API base: trim, ensure protocol, strip trailing slash,
+ * append /api/v1 if only a host/origin was given.
  */
 export function normalizeApiBaseUrl(raw: string | undefined | null): string {
   if (raw == null || !String(raw).trim()) return "";
-  const u = String(raw).trim().replace(/\/$/, "");
+  let u = String(raw).trim().replace(/\/$/, "");
+  u = ensureUrlProtocol(u);
   if (/\/api\/v\d+$/i.test(u)) return u;
   return `${u}/api/v1`;
+}
+
+/** Full absolute API base for browser redirects (OAuth, external navigation). */
+export function getAbsoluteBrowserApiBase(): string {
+  const base = getBrowserApiBase();
+  if (!base) return "";
+  if (/^https?:\/\//i.test(base)) return base;
+  if (typeof window !== "undefined") {
+    return `${window.location.origin}${base.startsWith("/") ? base : `/${base}`}`;
+  }
+  return base;
 }
 
 /**
@@ -26,6 +47,11 @@ export function getBrowserApiBase(): string {
 export function getServerApiBase(): string {
   const fromEnv = normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
   if (fromEnv) return fromEnv;
-  const proxy = (process.env.API_PROXY_TARGET || "http://127.0.0.1:4600").replace(/\/$/, "");
+  const proxy = ensureUrlProtocol(
+    (process.env.API_PROXY_TARGET || process.env.BACKEND_URL || "http://127.0.0.1:4600")
+      .trim()
+      .replace(/\/$/, ""),
+  );
+  if (/\/api\/v\d+$/i.test(proxy)) return proxy;
   return `${proxy}/api/v1`;
 }

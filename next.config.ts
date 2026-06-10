@@ -1,10 +1,20 @@
 import type { NextConfig } from "next";
 
-const apiProxyTarget = (
+function normalizeProxyTarget(raw: string): string {
+  let value = raw.trim().replace(/\/$/, "");
+  if (!/^https?:\/\//i.test(value)) {
+    const isLocal =
+      /^localhost(?::\d+)?$/i.test(value) || /^127\.0\.0\.1(?::\d+)?$/.test(value);
+    value = `${isLocal ? "http" : "https"}://${value}`;
+  }
+  return value;
+}
+
+const apiProxyTarget = normalizeProxyTarget(
   process.env.API_PROXY_TARGET ||
-  process.env.BACKEND_URL ||
-  "http://127.0.0.1:4600"
-).replace(/\/$/, "");
+    process.env.BACKEND_URL ||
+    "http://127.0.0.1:4600",
+);
 
 const nextConfig: NextConfig = {
   async rewrites() {
