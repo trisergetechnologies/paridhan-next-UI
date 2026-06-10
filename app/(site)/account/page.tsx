@@ -97,7 +97,7 @@ function AccountPageContent() {
 
   const openAddForm = () => {
     setEditingSlug(null);
-    setAddressForm({ ...EMPTY_ADDRESS_FORM });
+    setAddressForm({ ...EMPTY_ADDRESS_FORM, slug: "" });
     setIsFormOpen(true);
     setActiveTab("addresses");
   };
@@ -109,7 +109,8 @@ function AccountPageContent() {
     setActiveTab("addresses");
   };
 
-  const saveAddress = async () => {
+  const saveAddress = async (formOverride?: Address) => {
+    const payload = formOverride ?? addressForm;
     try {
       setSavingAddress(true);
       const isEdit = Boolean(editingSlug);
@@ -121,7 +122,7 @@ function AccountPageContent() {
       const res = await authFetch(endpoint, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(addressForm),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (!res.ok || !json.success) {

@@ -69,7 +69,10 @@ export default function PrivacyPolicyPage() {
           <ul className="list-disc list-inside space-y-2 text-muted-foreground">
             <li>Your name, contact number, email, and delivery address</li>
             <li>Order history and product preferences</li>
-            <li>Payment-related details processed securely via trusted gateways</li>
+            <li>
+              Payment-related details processed securely via Cashfree (UPI, cards, net banking).
+              We do not store full card numbers on our servers.
+            </li>
           </ul>
         </motion.section>
 

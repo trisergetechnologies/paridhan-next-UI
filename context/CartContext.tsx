@@ -7,6 +7,7 @@ import { cartLineId, parseCartLineId } from "@/lib/cartLineId";
 import { useToast } from "./ToastContext";
 import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useRef,
@@ -56,6 +57,7 @@ interface CartContextProps {
   removeFromCart: (id: string) => void;
   clearCart: () => void;
   updateQuantity: (id: string, quantity: number) => void;
+  refreshCart: () => Promise<void>;
 }
 
 const CartContext = createContext<CartContextProps | undefined>(undefined);
@@ -148,7 +150,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   }, [cart, isAuthenticated]);
 
   /* ================= BACKEND FETCH ================= */
-  const fetchCartFromBackend = async () => {
+  const fetchCartFromBackend = useCallback(async () => {
     try {
       const res = await authFetch(`${getBrowserApiBase()}/customer/cart`);
       if (!res.ok) {
@@ -172,7 +174,17 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       console.error("Fetch cart failed:", error);
       setCartError("Unable to fetch cart due to network/service issue");
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const onRefresh = () => {
+      if (isAuthenticated && user?.activeRole === "customer") {
+        void fetchCartFromBackend();
+      }
+    };
+    window.addEventListener("paridhan:cart-refresh", onRefresh);
+    return () => window.removeEventListener("paridhan:cart-refresh", onRefresh);
+  }, [isAuthenticated, user?.activeRole, fetchCartFromBackend]);
 
   const mergeGuestCartAndFetch = async () => {
     if (user?.activeRole && user.activeRole !== "customer") {
@@ -418,7 +430,16 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <CartContext.Provider
-      value={{ cart, cartError, pricing, addToCart, removeFromCart, clearCart, updateQuantity }}
+      value={{
+        cart,
+        cartError,
+        pricing,
+        addToCart,
+        removeFromCart,
+        clearCart,
+        updateQuantity,
+        refreshCart: fetchCartFromBackend,
+      }}
     >
       {children}
     </CartContext.Provider>

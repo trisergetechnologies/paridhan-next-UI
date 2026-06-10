@@ -9,6 +9,7 @@ import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { cartLineId } from "@/lib/cartLineId";
 import { toWishlistSnapshot } from "@/lib/wishlistSnapshot";
+import { estimatedDeliveryLabel, lookupPincode } from "@/lib/pincodeLookup";
 import { getBrowserApiBase } from "@/lib/publicApiBase";
 import { cn } from "@/lib/utils";
 import axios from "axios";
@@ -39,6 +40,9 @@ type ProductDetailPayload = {
   defaultVariantPublicId?: string;
   fabric?: string;
   color?: string;
+  blouseIncluded?: boolean;
+  length?: string;
+  discountPercentage?: number;
   categories?: { name?: string }[];
   images?: { url?: string }[];
   variants?: VariantDto[];
@@ -50,15 +54,6 @@ function variantOptionLabel(v: VariantDto) {
   }
   return v.publicId;
 }
-
-/** Placeholder until logistics API returns real ETA. */
-const ESTIMATED_DELIVERY = new Date("2026-05-21T12:00:00");
-const ESTIMATED_DELIVERY_LABEL = `Estimated delivery: ${ESTIMATED_DELIVERY.toLocaleDateString("en-IN", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-})}`;
 
 export default function Product() {
   const { productId } = useParams();
@@ -73,8 +68,14 @@ export default function Product() {
   const [isAdding, setIsAdding] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
   const [pinInput, setPinInput] = useState("");
-  const [deliveryChecked, setDeliveryChecked] = useState(false);
-  const [pinHelper, setPinHelper] = useState<string | null>(null);
+  const [pinChecking, setPinChecking] = useState(false);
+  const [deliveryResult, setDeliveryResult] = useState<{
+    serviceable: boolean;
+    city?: string;
+    state?: string;
+    message: string;
+    eta?: string;
+  } | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -117,6 +118,12 @@ export default function Product() {
   const displayMrp = selectedVariant?.mrp ?? product?.mrp ?? null;
   const showMrpStrike =
     displayMrp != null && Number(displayMrp) > Number(unitPrice);
+  const discountPct =
+    showMrpStrike && displayMrp
+      ? Math.round(((Number(displayMrp) - Number(unitPrice)) / Number(displayMrp)) * 100)
+      : product?.discountPercentage && product.discountPercentage > 0
+        ? Math.round(product.discountPercentage)
+        : 0;
   const stockAvailable = selectedVariant?.stock ?? product?.stock ?? 0;
 
   useEffect(() => {
@@ -279,6 +286,11 @@ export default function Product() {
                   ₹{Math.round(Number(displayMrp)).toLocaleString("en-IN")}
                 </span>
               ) : null}
+              {discountPct > 0 ? (
+                <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-sm font-semibold text-emerald-700">
+                  {discountPct}% OFF
+                </span>
+              ) : null}
             </div>
             <p className="text-[11px] text-muted-foreground">
               Shipping and taxes calculated at checkout.
@@ -289,15 +301,34 @@ export default function Product() {
             <h2 className="mb-3 text-sm font-semibold text-foreground sm:text-base">Check Delivery Available</h2>
             <form
               className="flex flex-col gap-2 sm:flex-row sm:items-stretch sm:gap-2"
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault();
-                const pin = pinInput.trim();
-                if (!pin) {
-                  setPinHelper("Please enter a PIN code.");
+                const pin = pinInput.replace(/\D/g, "").slice(0, 6);
+                if (pin.length !== 6) {
+                  setDeliveryResult({
+                    serviceable: false,
+                    message: "Please enter a valid 6-digit PIN code.",
+                  });
                   return;
                 }
-                setPinHelper(null);
-                setDeliveryChecked(true);
+                setPinChecking(true);
+                setDeliveryResult(null);
+                const result = await lookupPincode(pin);
+                setPinChecking(false);
+                if (result.success && result.data?.serviceable) {
+                  setDeliveryResult({
+                    serviceable: true,
+                    city: result.data.city,
+                    state: result.data.state,
+                    message: `Delivery available to ${result.data.city}, ${result.data.state}`,
+                    eta: estimatedDeliveryLabel(),
+                  });
+                } else {
+                  setDeliveryResult({
+                    serviceable: false,
+                    message: result.message || "Delivery not available to this PIN yet.",
+                  });
+                }
               }}
             >
               <label htmlFor="delivery-pin" className="sr-only">
@@ -307,31 +338,47 @@ export default function Product() {
                 id="delivery-pin"
                 value={pinInput}
                 onChange={(e) => {
-                  setPinInput(e.target.value);
-                  if (pinHelper) setPinHelper(null);
+                  setPinInput(e.target.value.replace(/\D/g, "").slice(0, 6));
+                  if (deliveryResult) setDeliveryResult(null);
                 }}
-                placeholder="Enter your area pin code"
+                placeholder="Enter 6-digit PIN code"
                 inputMode="numeric"
                 maxLength={6}
                 autoComplete="postal-code"
                 className="min-h-10 min-w-0 flex-1 bg-background"
               />
-              <Button type="submit" variant="default" className="h-10 shrink-0 sm:min-w-22">
-                Check
+              <Button
+                type="submit"
+                variant="default"
+                className="h-10 shrink-0 sm:min-w-22"
+                disabled={pinChecking}
+              >
+                {pinChecking ? "Checking…" : "Check"}
               </Button>
             </form>
-            {pinHelper ? <p className="mt-1 text-xs text-muted-foreground">{pinHelper}</p> : null}
-            {deliveryChecked ? (
-              <div className="mt-3 min-w-0 max-w-full">
-                <p className="text-pretty text-sm text-muted-foreground break-words">{ESTIMATED_DELIVERY_LABEL}</p>
-                <Link
-                  href="/account?tab=addresses"
-                  className="mt-3 inline-flex max-w-full min-w-0 items-center gap-2 break-words text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                >
-                  <MapPin className="size-4 shrink-0" aria-hidden />
-                  Add New Address
-                </Link>
+            {deliveryResult ? (
+              <div
+                className={cn(
+                  "mt-3 rounded-lg border px-3 py-2.5 text-sm",
+                  deliveryResult.serviceable
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-800"
+                    : "border-amber-500/30 bg-amber-500/10 text-amber-900"
+                )}
+              >
+                <p className="font-medium">{deliveryResult.message}</p>
+                {deliveryResult.serviceable && deliveryResult.eta ? (
+                  <p className="mt-1 text-xs opacity-90">{deliveryResult.eta}</p>
+                ) : null}
               </div>
+            ) : null}
+            {deliveryResult?.serviceable ? (
+              <Link
+                href="/account?tab=addresses"
+                className="mt-3 inline-flex max-w-full min-w-0 items-center gap-2 break-words text-sm font-medium text-primary hover:underline"
+              >
+                <MapPin className="size-4 shrink-0" aria-hidden />
+                Save address for faster checkout
+              </Link>
             ) : null}
           </div>
 
@@ -453,7 +500,13 @@ export default function Product() {
               </div>
             </div>
           ) : null}
-          <ProductDetailInfoTabs />
+          <ProductDetailInfoTabs
+            fabric={product.fabric}
+            color={product.color}
+            blouseIncluded={product.blouseIncluded}
+            length={product.length}
+            categoryName={firstCategory}
+          />
         </div>
       </div>
     </div>

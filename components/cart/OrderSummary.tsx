@@ -13,6 +13,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useToast } from "@/context/ToastContext";
 import { authFetch } from "@/lib/authFetch";
+import { launchCashfreeCheckout } from "@/lib/cashfreeCheckout";
 import { getBrowserApiBase } from "@/lib/publicApiBase";
 import { cn } from "@/lib/utils";
 import {
@@ -51,8 +52,6 @@ const TRUST_FEATURES: {
   },
 ];
 
-/* ================= TYPES ================= */
-
 interface Address {
   slug: string;
   fullName: string;
@@ -63,10 +62,21 @@ interface Address {
   postalCode: string;
 }
 
-/* ================= COMPONENT ================= */
+type OrderPlacementResponse = {
+  success: boolean;
+  message?: string;
+  data?: {
+    order?: { _id: string };
+    payment?: {
+      provider: string;
+      paymentSessionId: string;
+      mode?: "sandbox" | "production";
+    };
+  };
+};
 
 export default function OrderSummary() {
-  const { cart, pricing } = useCart();
+  const { cart, pricing, refreshCart } = useCart();
   const { isAuthenticated } = useAuth();
   const { showToast } = useToast();
 
@@ -89,7 +99,6 @@ export default function OrderSummary() {
       : 80;
   const total = isAuthenticated ? pricing.grandTotal : subtotal + tax + shipping;
 
-  /* ---------- FETCH ADDRESSES ---------- */
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -116,10 +125,10 @@ export default function OrderSummary() {
       }
     };
 
-    fetchAddresses();
-  }, [isAuthenticated]);
+    void fetchAddresses();
+    void refreshCart();
+  }, [isAuthenticated, refreshCart]);
 
-  /* ---------- PLACE ORDER ---------- */
   const handlePlaceOrder = async () => {
     if (!selectedAddress) return;
 
@@ -133,21 +142,34 @@ export default function OrderSummary() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             addressSlug: selectedAddress,
-            paymentMethod: "cod",
+            paymentMethod: "online",
           }),
         }
       );
-      const json = await res.json();
+      const json = (await res.json()) as OrderPlacementResponse;
       if (!res.ok || !json.success) {
-        setAddressError(json.message || "Order placement failed");
-        showToast(json.message || "Order placement failed", "error");
+        setAddressError(json.message || "Could not start checkout");
+        showToast(json.message || "Could not start checkout", "error");
+        await refreshCart();
         return;
       }
-      showToast("Order placed successfully", "success");
 
-      window.location.href = "/orders";
+      const payment = json.data?.payment;
+      if (payment?.paymentSessionId) {
+        showToast("Redirecting to secure payment…", "success");
+        await launchCashfreeCheckout(
+          payment.paymentSessionId,
+          payment.mode === "production" ? "production" : "sandbox"
+        );
+        return;
+      }
+
+      showToast("Payment session missing. Please try again.", "error");
+      await refreshCart();
     } catch (error) {
-      console.error("Order failed:", error);
+      console.error("Checkout failed:", error);
+      showToast("Something went wrong. Please try again.", "error");
+      await refreshCart();
     } finally {
       setPlacingOrder(false);
     }
@@ -162,7 +184,6 @@ export default function OrderSummary() {
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {/* TOTALS */}
         <div className="space-y-3">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">
@@ -199,7 +220,6 @@ export default function OrderSummary() {
           </div>
         </div>
 
-        {/* ADDRESS SELECTION */}
         {!isAuthenticated && (
           <p className="text-sm text-muted-foreground pt-2">
             Sign in to complete your order.
@@ -207,35 +227,48 @@ export default function OrderSummary() {
         )}
 
         {isAuthenticated && (
-          <div className="space-y-2 pt-2">
-            <p className="text-sm font-medium">Delivery Address</p>
-            {addressError && (
-              <p className="text-sm text-red-600">{addressError}</p>
-            )}
-            {addresses.length === 0 ? (
-              <Link href="/account?tab=addresses" className="text-sm text-primary underline">
-                No address found. Add address in account page.
-              </Link>
-            ) : null}
-            <select
-              value={selectedAddress || ""}
-              onChange={(e) => setSelectedAddress(e.target.value)}
-              className="w-full border rounded-md p-2 text-sm"
-            >
-              {addresses.map((addr) => (
-                <option key={addr.slug} value={addr.slug}>
-                  {addr.fullName}, {addr.city}
-                </option>
-              ))}
-            </select>
-          </div>
+          <>
+            <div className="space-y-2 pt-2">
+              <p className="text-sm font-medium">Delivery Address</p>
+              {addressError && (
+                <p className="text-sm text-red-600">{addressError}</p>
+              )}
+              {addresses.length === 0 ? (
+                <Link href="/account?tab=addresses" className="text-sm text-primary underline">
+                  No address found. Add address in account page.
+                </Link>
+              ) : null}
+              <select
+                value={selectedAddress || ""}
+                onChange={(e) => setSelectedAddress(e.target.value)}
+                className="w-full rounded-lg border border-input bg-background p-2.5 text-sm shadow-sm"
+              >
+                {addresses.map((addr) => (
+                  <option key={addr.slug} value={addr.slug}>
+                    {addr.fullName}, {addr.city} — {addr.postalCode}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
+              <div className="flex items-center gap-3">
+                <CreditCard className="h-5 w-5 shrink-0 text-primary" />
+                <div>
+                  <p className="text-sm font-medium">Prepaid only</p>
+                  <p className="text-xs text-muted-foreground">
+                    Pay securely via Cashfree — UPI, cards & net banking
+                  </p>
+                </div>
+              </div>
+            </div>
+          </>
         )}
 
-        {/* CHECKOUT */}
         <Button
           size="lg"
           className="w-full"
-          disabled={isAuthenticated ? placingOrder : false}
+          disabled={isAuthenticated ? placingOrder || !selectedAddress || itemCount === 0 : false}
           onClick={() => {
             if (!isAuthenticated) {
               window.dispatchEvent(
@@ -249,12 +282,23 @@ export default function OrderSummary() {
           <CreditCard className="h-4 w-4 mr-2" />
           {isAuthenticated
             ? placingOrder
-              ? "Placing Order..."
-              : "Proceed to Checkout"
+              ? "Starting payment…"
+              : "Pay securely"
             : "Sign in to checkout"}
         </Button>
 
-        {/* TRUST */}
+        <p className="text-center text-[11px] text-muted-foreground">
+          Your cart is kept until payment succeeds. By paying you agree to our{" "}
+          <Link href="/policy/terms-conditions" className="text-primary hover:underline">
+            Terms
+          </Link>{" "}
+          and{" "}
+          <Link href="/policy/return-policy" className="text-primary hover:underline">
+            Return Policy
+          </Link>
+          .
+        </p>
+
         <div className="grid grid-cols-3 gap-2 border-t pt-4 sm:gap-3">
           {TRUST_FEATURES.map(({ label, Icon, iconClass, bgClass }) => (
             <div

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 import { Lock, Mail, User } from "lucide-react";
 import { useState } from "react";
+import GoogleSignInButton from "./GoogleSignInButton";
 
 interface Props {
   onSuccess: () => void;
@@ -167,6 +168,17 @@ export default function SignUpForm({ onSuccess }: Props) {
       <Button size="lg" className="w-full" disabled={loading}>
         {loading ? "Creating account..." : "Create Account"}
       </Button>
+
+      <div className="relative py-1">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-background px-2 text-muted-foreground">or</span>
+        </div>
+      </div>
+
+      <GoogleSignInButton label="Sign up with Google" />
     </form>
   );
 }

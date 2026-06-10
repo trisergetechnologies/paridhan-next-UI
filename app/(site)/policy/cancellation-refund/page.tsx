@@ -12,11 +12,12 @@ export default function CancellationRefundPage() {
         </p>
 
         <ul className="space-y-4 text-muted-foreground list-disc list-inside">
-          <li>Orders can be cancelled within 24 hours of placement.</li>
-          <li>Once shipped, orders cannot be cancelled.</li>
-          <li>Refunds are processed after product inspection.</li>
-          <li>Refunds are issued to the original payment method.</li>
-          <li>Processing time may take 5–7 business days.</li>
+          <li>Orders can be cancelled within 24 hours of placement, before dispatch.</li>
+          <li>Once shipped, orders cannot be cancelled — you may request a return per our Return Policy.</li>
+          <li>Refunds for prepaid orders are processed after product inspection (if applicable).</li>
+          <li>Online payments are processed via Cashfree; refunds go to the original UPI, card, or bank account.</li>
+          <li>COD orders cancelled before dispatch incur no charge.</li>
+          <li>Refund processing typically takes 5–7 business days after approval.</li>
         </ul>
 
         <p className="text-muted-foreground">

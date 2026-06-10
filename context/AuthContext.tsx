@@ -1,11 +1,13 @@
 "use client";
 
 import { authFetch } from "@/lib/authFetch";
+import { userNeedsPhone } from "@/lib/authPhonePrompt";
 import { getBrowserApiBase } from "@/lib/publicApiBase";
 import { useToast } from "./ToastContext";
 import {
   createContext,
   ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useState,
@@ -46,10 +48,15 @@ type AuthContextType = {
   isAuthLoading: boolean;
   isOffline: boolean;
   authDegraded: boolean;
+  phoneModalOpen: boolean;
+  savingPhone: boolean;
   login: (payload: LoginPayload) => Promise<void>;
   logout: () => Promise<void>;
   signup: (payload: SignUpPayload)=> Promise<void>;
-  refreshUser: () => Promise<void>;
+  refreshUser: () => Promise<User | null>;
+  openPhoneModal: () => void;
+  closePhoneModal: () => void;
+  updatePhone: (phone: string) => Promise<void>;
 };
 
 /* ================= CONTEXT ================= */
@@ -64,8 +71,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isOffline, setIsOffline] = useState(false);
   const [authDegraded, setAuthDegraded] = useState(false);
+  const [phoneModalOpen, setPhoneModalOpen] = useState(false);
+  const [savingPhone, setSavingPhone] = useState(false);
 
   const isAuthenticated = Boolean(user);
+
+  const openPhoneModal = useCallback(() => setPhoneModalOpen(true), []);
+  const closePhoneModal = useCallback(() => setPhoneModalOpen(false), []);
+
+  const promptForPhoneIfNeeded = useCallback((profile: User | null) => {
+    if (profile && userNeedsPhone(profile.phone)) {
+      openPhoneModal();
+    }
+  }, [openPhoneModal]);
 
   /* ================= INIT ================= */
   useEffect(() => {
@@ -125,7 +143,8 @@ const login = async (payload: { email: string; password: string; requestedRole?:
 
   setAuthDegraded(false);
   setIsOffline(false);
-  await refreshUser();
+  const profile = await refreshUser();
+  promptForPhoneIfNeeded(profile);
 };
 
 const signup = async (payload: {
@@ -164,13 +183,34 @@ const signup = async (payload: {
       // No-op: keep local cleanup deterministic.
     }
     setUser(null);
+    closePhoneModal();
     showToast("Logged out", "info");
     setAuthDegraded(false);
     setIsAuthLoading(false);
   };
 
+  const updatePhone = async (phone: string) => {
+    setSavingPhone(true);
+    try {
+      const res = await authFetch(`${getBrowserApiBase()}/user/me`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.message || "Could not save mobile number");
+      }
+      await refreshUser();
+      closePhoneModal();
+      showToast("Mobile number saved", "success");
+    } finally {
+      setSavingPhone(false);
+    }
+  };
+
   /* ================= FETCH PROFILE ================= */
-  const refreshUser = async () => {
+  const refreshUser = async (): Promise<User | null> => {
     try {
       setIsAuthLoading(true);
 
@@ -186,11 +226,11 @@ const signup = async (payload: {
         if (res.status === 401) {
           setUser(null);
           setAuthDegraded(false);
-          return;
+          return null;
         }
         if (res.status >= 500 || res.status === 429) {
           setAuthDegraded(true);
-          return;
+          return user;
         }
         throw new Error("Unexpected auth response");
       }
@@ -200,17 +240,19 @@ const signup = async (payload: {
         setUser(json.data);
         setIsOffline(false);
         setAuthDegraded(false);
+        return json.data as User;
       }
+      return user;
     } catch (error) {
       const err = error as Error & { code?: string };
       if (err.code === "NETWORK_OFFLINE") {
         setIsOffline(true);
         setAuthDegraded(true);
-        return;
+        return user;
       }
       console.error("Auth error:", error);
-      // Do not force logout on non-auth failures.
       setAuthDegraded(true);
+      return user;
     } finally {
       setIsAuthLoading(false);
     }
@@ -225,10 +267,15 @@ const signup = async (payload: {
         isAuthLoading,
         isOffline,
         authDegraded,
+        phoneModalOpen,
+        savingPhone,
         login,
         logout,
         signup,
         refreshUser,
+        openPhoneModal,
+        closePhoneModal,
+        updatePhone,
       }}
     >
       {children}

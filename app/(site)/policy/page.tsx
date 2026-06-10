@@ -11,6 +11,12 @@ const policies = [
     href: "/policy/privacy-policy",
   },
   {
+    title: "Return Policy",
+    description:
+      "7-day returns for unused sarees — eligibility, process, and refund timelines.",
+    href: "/policy/return-policy",
+  },
+  {
     title: "Exchange Policy",
     description:
       "Understand our exchange guidelines for a smooth and transparent experience.",
@@ -25,7 +31,7 @@ const policies = [
   {
     title: "Cancellation & Refund Policy",
     description:
-      "Know how cancellations and refunds are handled at Paridhan Emporium.",
+      "Know how order cancellations and refunds are handled, including online payments via Cashfree.",
     href: "/policy/cancellation-refund",
   },
 ];
@@ -66,7 +72,7 @@ export default function PolicyPage() {
         </motion.div>
 
         {/* POLICY GRID */}
-        <div className="grid gap-6 sm:grid-cols-2">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {policies.map((policy, i) => (
             <motion.div
               key={policy.title}

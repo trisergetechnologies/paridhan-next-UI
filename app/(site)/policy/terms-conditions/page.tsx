@@ -19,7 +19,14 @@ export default function TermsConditionsPage() {
 
           <p>
             Prices, availability, and product descriptions are subject to change
-            without prior notice.
+            without prior notice. Saree specifications (fabric, colour, length, blouse piece)
+            are as described on each product page.
+          </p>
+
+          <p>
+            Online payments are processed by Cashfree Payments India Pvt. Ltd. By choosing
+            prepaid checkout you agree to Cashfree&apos;s terms in addition to ours. Cash on
+            Delivery is available on eligible orders and PIN codes.
           </p>
 
           <p>

@@ -185,10 +185,26 @@ export default function Footer() {
                 </li>
                 <li>
                   <Link
+                    href="/policy/return-policy"
+                    className="text-sm text-muted-foreground transition hover:text-foreground"
+                  >
+                    Return policy
+                  </Link>
+                </li>
+                <li>
+                  <Link
                     href="/policy/exchange-policy"
                     className="text-sm text-muted-foreground transition hover:text-foreground"
                   >
                     Exchange policy
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/policy/cancellation-refund"
+                    className="text-sm text-muted-foreground transition hover:text-foreground"
+                  >
+                    Cancellation & refund
                   </Link>
                 </li>
               </ul>

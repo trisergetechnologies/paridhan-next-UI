@@ -8,9 +8,14 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/context/CartContext";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { useEffect } from "react";
 
 export default function Cart() {
-  const { cart } = useCart();
+  const { cart, refreshCart } = useCart();
+
+  useEffect(() => {
+    void refreshCart();
+  }, [refreshCart]);
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   if (cart.length === 0) {

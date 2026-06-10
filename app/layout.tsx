@@ -1,3 +1,4 @@
+import AuthPhonePrompt from "@/components/auth/AuthPhonePrompt";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import { ToastProvider } from "@/context/ToastContext";
@@ -38,6 +39,7 @@ export default function RootLayout({
       <body className={`${fontSans.className} antialiased flex flex-col min-h-screen`}>
         <ToastProvider>
           <AuthProvider>
+            <AuthPhonePrompt />
             <WishlistProvider>
               <CartProvider>{children}</CartProvider>
             </WishlistProvider>
