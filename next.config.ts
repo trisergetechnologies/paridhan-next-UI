@@ -10,11 +10,28 @@ function normalizeProxyTarget(raw: string): string {
   return value;
 }
 
-const apiProxyTarget = normalizeProxyTarget(
-  process.env.API_PROXY_TARGET ||
-    process.env.BACKEND_URL ||
-    "http://127.0.0.1:4600",
-);
+function resolveApiProxyOrigin(): string {
+  const explicit = process.env.API_PROXY_TARGET?.trim();
+  if (explicit) return normalizeProxyTarget(explicit);
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (apiUrl) {
+    let normalized = apiUrl.replace(/\/$/, "");
+    if (!/^https?:\/\//i.test(normalized)) {
+      normalized = `https://${normalized}`;
+    }
+    normalized = normalized.replace(/\/api\/v\d+$/i, "");
+    return normalizeProxyTarget(normalized);
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    return "https://api.paridhanemporium.com";
+  }
+
+  return normalizeProxyTarget(process.env.BACKEND_URL || "http://127.0.0.1:4600");
+}
+
+const apiProxyTarget = resolveApiProxyOrigin();
 
 const nextConfig: NextConfig = {
   async rewrites() {

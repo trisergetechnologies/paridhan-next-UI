@@ -1,4 +1,4 @@
-import { normalizeApiBaseUrl } from "@/lib/publicApiBase";
+import { getServerApiBase } from "@/lib/publicApiBase";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
@@ -35,9 +35,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const base =
-    normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_URL) ||
-    `${request.nextUrl.origin}/api/v1`;
+  const base = getServerApiBase() || `${request.nextUrl.origin}/api/v1`;
 
   try {
     const res = await fetch(`${base}/public/storefront-mode`, {
