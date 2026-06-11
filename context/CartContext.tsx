@@ -58,6 +58,7 @@ interface CartContextProps {
   clearCart: () => void;
   updateQuantity: (id: string, quantity: number) => void;
   refreshCart: () => Promise<void>;
+  mergeGuestCart: (opts?: { activeRole?: string | null }) => Promise<void>;
 }
 
 const CartContext = createContext<CartContextProps | undefined>(undefined);
@@ -122,6 +123,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const cartRef = useRef<CartItem[]>([]);
   cartRef.current = cart;
+  const mergingGuestRef = useRef(false);
   const [cartError, setCartError] = useState<string | null>(null);
   const [pricing, setPricing] = useState({
     itemsTotal: 0,
@@ -133,14 +135,18 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   /* ================= LOAD CART ================= */
   useEffect(() => {
     if (isAuthenticated) {
-      mergeGuestCartAndFetch();
+      void mergeGuestCartAndFetch();
     } else {
       const savedCart = localStorage.getItem("cart");
       if (savedCart) {
-        setCart(JSON.parse(savedCart));
+        try {
+          setCart(JSON.parse(savedCart));
+        } catch {
+          localStorage.removeItem("cart");
+        }
       }
     }
-  }, [isAuthenticated, user?.activeRole]);
+  }, [isAuthenticated, user?.activeRole, mergeGuestCartAndFetch]);
 
   /* ================= PERSIST LOCAL CART ================= */
   useEffect(() => {
@@ -186,41 +192,53 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     return () => window.removeEventListener("paridhan:cart-refresh", onRefresh);
   }, [isAuthenticated, user?.activeRole, fetchCartFromBackend]);
 
-  const mergeGuestCartAndFetch = async () => {
-    if (user?.activeRole && user.activeRole !== "customer") {
+  const mergeGuestCart = useCallback(async (opts?: { activeRole?: string | null }) => {
+    if (mergingGuestRef.current) return;
+
+    const activeRole = opts?.activeRole ?? user?.activeRole;
+    if (activeRole && activeRole !== "customer") {
       setCart([]);
       setPricing({ itemsTotal: 0, taxAmount: 0, deliveryCharge: 0, grandTotal: 0 });
       return;
     }
+
     const savedCart = localStorage.getItem("cart");
-    if (savedCart) {
-      try {
-        const items: CartItem[] = JSON.parse(savedCart);
-        for (const item of items) {
-          const res = await authFetch(`${getBrowserApiBase()}/customer/cart`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              productId: item.productId,
-              quantity: Math.max(1, item.quantity),
-              ...(item.variantPublicId
-                ? { variantPublicId: item.variantPublicId }
-                : {}),
-            }),
-          });
-          if (!res.ok) {
-            setCartError(`Failed to merge guest cart item (${res.status})`);
-          }
+    if (!savedCart) return;
+
+    mergingGuestRef.current = true;
+    try {
+      const items: CartItem[] = JSON.parse(savedCart);
+      for (const item of items) {
+        const res = await authFetch(`${getBrowserApiBase()}/customer/cart`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            productId: item.productId,
+            quantity: Math.max(1, item.quantity),
+            ...(item.variantPublicId
+              ? { variantPublicId: item.variantPublicId }
+              : {}),
+          }),
+        });
+        if (!res.ok) {
+          setCartError(`Failed to merge guest cart item (${res.status})`);
         }
-        localStorage.removeItem("cart");
-      } catch {
-        setCartError("Failed to merge guest cart");
       }
+      localStorage.removeItem("cart");
+      setCartError(null);
+    } catch {
+      setCartError("Failed to merge guest cart");
+    } finally {
+      mergingGuestRef.current = false;
     }
+  }, [user?.activeRole]);
+
+  const mergeGuestCartAndFetch = useCallback(async () => {
+    await mergeGuestCart();
     await fetchCartFromBackend();
-  };
+  }, [mergeGuestCart, fetchCartFromBackend]);
 
   /* ================= ADD ================= */
   const addToCart = async (item: CartItem) => {
@@ -439,6 +457,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         clearCart,
         updateQuantity,
         refreshCart: fetchCartFromBackend,
+        mergeGuestCart,
       }}
     >
       {children}

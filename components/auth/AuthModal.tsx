@@ -12,6 +12,8 @@ interface AuthModalProps {
   onClose: () => void;
   mode: "signin" | "signup";
   onModeChange: (mode: "signin" | "signup") => void;
+  returnTo?: string | null;
+  onAuthSuccess?: () => void;
 }
 
 export default function AuthModal({
@@ -19,6 +21,8 @@ export default function AuthModal({
   onClose,
   mode,
   onModeChange,
+  returnTo,
+  onAuthSuccess,
 }: AuthModalProps) {
   /* -----------------------
      LOCK SCROLL
@@ -47,6 +51,7 @@ export default function AuthModal({
   ------------------------ */
   const handleAuthSuccess = () => {
     onClose();
+    onAuthSuccess?.();
   };
 
   return (
@@ -100,9 +105,9 @@ export default function AuthModal({
 
               {/* FORMS */}
               {mode === "signin" ? (
-                <SignInForm onSuccess={handleAuthSuccess} />
+                <SignInForm onSuccess={handleAuthSuccess} returnTo={returnTo} />
               ) : (
-                <SignUpForm onSuccess={handleAuthSuccess} />
+                <SignUpForm onSuccess={handleAuthSuccess} returnTo={returnTo} />
               )}
 
               {/* MODE SWITCH */}

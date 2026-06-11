@@ -5,13 +5,15 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 import { Lock, Mail } from "lucide-react";
 import { useState } from "react";
+import { saveAuthReturnTo } from "@/lib/authReturnTo";
 import GoogleSignInButton from "./GoogleSignInButton";
 
 interface Props {
   onSuccess: () => void;
+  returnTo?: string | null;
 }
 
-export default function SignInForm({ onSuccess }: Props) {
+export default function SignInForm({ onSuccess, returnTo }: Props) {
   const { login } = useAuth();
 
   const [email, setEmail] = useState("");
@@ -83,7 +85,12 @@ export default function SignInForm({ onSuccess }: Props) {
         </div>
       </div>
 
-      <GoogleSignInButton />
+      <GoogleSignInButton
+        returnTo={returnTo ?? undefined}
+        onBeforeRedirect={() => {
+          if (returnTo) saveAuthReturnTo(returnTo);
+        }}
+      />
     </form>
   );
 }

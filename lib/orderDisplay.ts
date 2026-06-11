@@ -1,6 +1,7 @@
 /** Aligns with `Order.orderStatus` in the backend schema */
 
 export type OrderStatusKey =
+  | "awaiting_payment"
   | "placed"
   | "confirmed"
   | "packed"
@@ -21,6 +22,7 @@ export function normalizeOrderStatus(raw: unknown): OrderStatusKey {
     .trim()
     .toLowerCase();
   if (
+    s === "awaiting_payment" ||
     s === "placed" ||
     s === "confirmed" ||
     s === "packed" ||
@@ -38,6 +40,7 @@ export function normalizeOrderStatus(raw: unknown): OrderStatusKey {
 
 export function orderStatusLabel(status: OrderStatusKey): string {
   const map: Record<OrderStatusKey, string> = {
+    awaiting_payment: "Awaiting payment",
     placed: "Order placed",
     confirmed: "Confirmed",
     packed: "Packed",
@@ -50,6 +53,7 @@ export function orderStatusLabel(status: OrderStatusKey): string {
 
 export function orderStatusShortLabel(status: OrderStatusKey): string {
   const map: Record<OrderStatusKey, string> = {
+    awaiting_payment: "Awaiting payment",
     placed: "Placed",
     confirmed: "Confirmed",
     packed: "Packed",

@@ -6,13 +6,15 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 import { Lock, Mail, User } from "lucide-react";
 import { useState } from "react";
+import { saveAuthReturnTo } from "@/lib/authReturnTo";
 import GoogleSignInButton from "./GoogleSignInButton";
 
 interface Props {
   onSuccess: () => void;
+  returnTo?: string | null;
 }
 
-export default function SignUpForm({ onSuccess }: Props) {
+export default function SignUpForm({ onSuccess, returnTo }: Props) {
   const { signup } = useAuth();
 
   const [form, setForm] = useState({
@@ -178,7 +180,13 @@ export default function SignUpForm({ onSuccess }: Props) {
         </div>
       </div>
 
-      <GoogleSignInButton label="Sign up with Google" />
+      <GoogleSignInButton
+        label="Sign up with Google"
+        returnTo={returnTo ?? undefined}
+        onBeforeRedirect={() => {
+          if (returnTo) saveAuthReturnTo(returnTo);
+        }}
+      />
     </form>
   );
 }

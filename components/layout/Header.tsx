@@ -2,6 +2,7 @@
 
 import AuthModal from "@/components/auth/AuthModal";
 import { useAuth } from "@/context/AuthContext";
+import { saveAuthReturnTo } from "@/lib/authReturnTo";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { AnimatePresence, motion, type Variants } from "framer-motion";
@@ -26,6 +27,7 @@ export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [authOpen, setAuthOpen] = useState(false);
+  const [authReturnTo, setAuthReturnTo] = useState<string | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [policyOpen, setPolicyOpen] = useState(false);
 
@@ -41,13 +43,21 @@ export default function Header() {
 
   useEffect(() => {
     const openAuth = (event: Event) => {
-      const detail = (event as CustomEvent<{ mode?: "signin" | "signup" }>).detail;
+      const detail = (
+        event as CustomEvent<{ mode?: "signin" | "signup"; returnTo?: string }>
+      ).detail;
       setAuthMode(detail?.mode || "signin");
+      const returnTo =
+        detail?.returnTo && detail.returnTo.startsWith("/") && !detail.returnTo.startsWith("//")
+          ? detail.returnTo
+          : `${pathname}${typeof window !== "undefined" ? window.location.search : ""}`;
+      setAuthReturnTo(returnTo);
+      saveAuthReturnTo(returnTo);
       setAuthOpen(true);
     };
     window.addEventListener("open-auth-modal", openAuth as EventListener);
     return () => window.removeEventListener("open-auth-modal", openAuth as EventListener);
-  }, []);
+  }, [pathname]);
 
   useEffect(() => {
     setIsMobileOpen(false);
@@ -435,9 +445,19 @@ export default function Header() {
       {/* ================= AUTH MODAL ================= */}
       <AuthModal
         open={authOpen}
-        onClose={() => setAuthOpen(false)}
+        onClose={() => {
+          setAuthOpen(false);
+          setAuthReturnTo(null);
+        }}
         mode={authMode}
         onModeChange={setAuthMode}
+        returnTo={authReturnTo}
+        onAuthSuccess={() => {
+          if (authReturnTo) {
+            router.push(authReturnTo);
+            setAuthReturnTo(null);
+          }
+        }}
       />
     </>
   );

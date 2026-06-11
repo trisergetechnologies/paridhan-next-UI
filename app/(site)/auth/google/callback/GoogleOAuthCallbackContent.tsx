@@ -1,7 +1,9 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
+import { useCart } from "@/context/CartContext";
 import { useToast } from "@/context/ToastContext";
+import { consumeAuthReturnTo } from "@/lib/authReturnTo";
 import { markPhonePromptAfterAuth, userNeedsPhone } from "@/lib/authPhonePrompt";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -9,16 +11,19 @@ import { useEffect, useRef, useState } from "react";
 const DEFAULT_AFTER_LOGIN = "/";
 
 function resolveReturnPath(returnTo: string | null) {
-  if (!returnTo || !returnTo.startsWith("/") || returnTo.startsWith("//")) {
-    return DEFAULT_AFTER_LOGIN;
-  }
-  return returnTo;
+  const fromUrl =
+    returnTo && returnTo.startsWith("/") && !returnTo.startsWith("//")
+      ? returnTo
+      : null;
+  if (fromUrl) return fromUrl;
+  return consumeAuthReturnTo() || DEFAULT_AFTER_LOGIN;
 }
 
 export default function GoogleOAuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { refreshUser } = useAuth();
+  const { mergeGuestCart, refreshCart } = useCart();
   const { showToast } = useToast();
   const [message, setMessage] = useState("Completing Google sign-in...");
   const handledRef = useRef(false);
@@ -41,6 +46,8 @@ export default function GoogleOAuthCallbackContent() {
     void (async () => {
       try {
         const profile = await refreshUser();
+        await mergeGuestCart({ activeRole: profile?.activeRole });
+        await refreshCart();
         showToast("Signed in with Google", "success");
         if (userNeedsPhone(profile?.phone)) {
           markPhonePromptAfterAuth();

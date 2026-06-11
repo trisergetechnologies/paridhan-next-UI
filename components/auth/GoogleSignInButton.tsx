@@ -6,11 +6,13 @@ import { startGoogleOAuth } from "@/lib/googleOAuth";
 type Props = {
   returnTo?: string;
   label?: string;
+  onBeforeRedirect?: () => void;
 };
 
 export default function GoogleSignInButton({
   returnTo,
   label = "Continue with Google",
+  onBeforeRedirect,
 }: Props) {
   return (
     <Button
@@ -18,7 +20,10 @@ export default function GoogleSignInButton({
       variant="outline"
       size="lg"
       className="w-full h-11 gap-3"
-      onClick={() => startGoogleOAuth({ returnTo })}
+      onClick={() => {
+        onBeforeRedirect?.();
+        startGoogleOAuth({ returnTo });
+      }}
     >
       <GoogleIcon />
       {label}

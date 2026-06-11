@@ -5,17 +5,21 @@ import EmptyCart from "@/components/cart/EmptyCart";
 import OrderSummary from "@/components/cart/OrderSummary";
 import Recommendations from "@/components/cart/Recommendations";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useEffect } from "react";
 
 export default function Cart() {
+  const { isAuthenticated } = useAuth();
   const { cart, refreshCart } = useCart();
 
   useEffect(() => {
-    void refreshCart();
-  }, [refreshCart]);
+    if (isAuthenticated) {
+      void refreshCart();
+    }
+  }, [isAuthenticated, refreshCart]);
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   if (cart.length === 0) {

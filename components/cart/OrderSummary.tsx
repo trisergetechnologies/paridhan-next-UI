@@ -272,7 +272,9 @@ export default function OrderSummary() {
           onClick={() => {
             if (!isAuthenticated) {
               window.dispatchEvent(
-                new CustomEvent("open-auth-modal", { detail: { mode: "signin" } })
+                new CustomEvent("open-auth-modal", {
+                  detail: { mode: "signin", returnTo: "/cart" },
+                })
               );
               return;
             }
