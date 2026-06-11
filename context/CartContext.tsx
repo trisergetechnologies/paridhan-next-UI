@@ -132,22 +132,6 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     grandTotal: 0,
   });
 
-  /* ================= LOAD CART ================= */
-  useEffect(() => {
-    if (isAuthenticated) {
-      void mergeGuestCartAndFetch();
-    } else {
-      const savedCart = localStorage.getItem("cart");
-      if (savedCart) {
-        try {
-          setCart(JSON.parse(savedCart));
-        } catch {
-          localStorage.removeItem("cart");
-        }
-      }
-    }
-  }, [isAuthenticated, user?.activeRole, mergeGuestCartAndFetch]);
-
   /* ================= PERSIST LOCAL CART ================= */
   useEffect(() => {
     if (!isAuthenticated) {
@@ -239,6 +223,22 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     await mergeGuestCart();
     await fetchCartFromBackend();
   }, [mergeGuestCart, fetchCartFromBackend]);
+
+  /* ================= LOAD CART ================= */
+  useEffect(() => {
+    if (isAuthenticated) {
+      void mergeGuestCartAndFetch();
+    } else {
+      const savedCart = localStorage.getItem("cart");
+      if (savedCart) {
+        try {
+          setCart(JSON.parse(savedCart));
+        } catch {
+          localStorage.removeItem("cart");
+        }
+      }
+    }
+  }, [isAuthenticated, user?.activeRole, mergeGuestCartAndFetch]);
 
   /* ================= ADD ================= */
   const addToCart = async (item: CartItem) => {
