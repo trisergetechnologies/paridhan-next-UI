@@ -45,7 +45,7 @@ export default function ProductImageGallery({
     return (
       <div className="space-y-4">
         <div
-          className="relative aspect-[3/4] w-full overflow-hidden rounded border border-border bg-muted"
+          className="relative h-[min(52vh,380px)] w-full overflow-hidden rounded border border-border bg-muted sm:h-[min(58vh,440px)] lg:h-[min(62vh,480px)]"
           aria-label="No product image"
         >
           <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-6 text-center text-muted-foreground">
@@ -59,12 +59,12 @@ export default function ProductImageGallery({
 
   return (
     <div className="space-y-4">
-      <div className="relative aspect-[3/4] w-full overflow-hidden rounded border border-border bg-muted">
+      <div className="relative h-[min(52vh,380px)] w-full overflow-hidden rounded border border-border bg-muted sm:h-[min(58vh,440px)] lg:h-[min(62vh,480px)]">
         <Image
           src={current.url}
           alt={current.alt}
           fill
-          className="object-cover"
+          className="object-contain"
           sizes="(min-width: 1024px) 50vw, 100vw"
           priority
         />

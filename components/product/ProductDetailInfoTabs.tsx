@@ -20,9 +20,20 @@ export type ProductDetailTabProps = {
   color?: string | null;
   blouseIncluded?: boolean;
   length?: string | null;
-  categoryName?: string | null;
+  occasion?: string | null;
+  pattern?: string | null;
+  fit?: string | null;
+  texture?: string | null;
+  washCare?: string | null;
+  ironing?: string | null;
+  storage?: string | null;
   sellerName?: string | null;
 };
+
+function rowIf(term: string, value?: string | null) {
+  const desc = value?.trim();
+  return desc ? { term, desc } : null;
+}
 
 function SpecList({ rows }: { rows: { term: string; desc: string }[] }) {
   return (
@@ -45,32 +56,29 @@ function SpecList({ rows }: { rows: { term: string; desc: string }[] }) {
 }
 
 function buildTabContent(props: ProductDetailTabProps): Record<TabId, { rows: { term: string; desc: string }[] }> {
-  const fabric = props.fabric?.trim() || "Premium saree fabric";
-  const color = props.color?.trim() || "As shown in images";
   const length = props.length?.trim() || "5.5 meters";
   const blouse = props.blouseIncluded === false ? "Not included" : "Included (unstitched)";
-  const occasion = props.categoryName?.trim() || "Festive / wedding wear";
+
+  const detailsRows = [
+    { term: "Saree length", desc: length },
+    { term: "Blouse piece", desc: blouse },
+    rowIf("Colour", props.color),
+    rowIf("Occasion", props.occasion),
+    rowIf("Pattern", props.pattern),
+    rowIf("Fit", props.fit),
+  ].filter((r): r is { term: string; desc: string } => r != null);
+
+  const fabricRows = [
+    rowIf("Fabric", props.fabric),
+    rowIf("Texture", props.texture),
+    rowIf("Wash care", props.washCare),
+    rowIf("Ironing", props.ironing),
+    rowIf("Storage", props.storage),
+  ].filter((r): r is { term: string; desc: string } => r != null);
 
   return {
-    details: {
-      rows: [
-        { term: "Saree length", desc: length },
-        { term: "Blouse piece", desc: blouse },
-        { term: "Colour", desc: color },
-        { term: "Occasion", desc: occasion },
-        { term: "Pattern", desc: "Woven / printed design" },
-        { term: "Fit", desc: "Ready to drape" },
-      ],
-    },
-    fabric: {
-      rows: [
-        { term: "Fabric", desc: fabric },
-        { term: "Texture", desc: "Soft, premium finish" },
-        { term: "Wash care", desc: "Dry clean recommended for silk and zari" },
-        { term: "Ironing", desc: "Low heat on reverse; avoid direct heat on embellishments" },
-        { term: "Storage", desc: "Fold in muslin cloth; store in a cool, dry place" },
-      ],
-    },
+    details: { rows: detailsRows },
+    fabric: { rows: fabricRows },
     shipping: {
       rows: [
         { term: "Dispatch", desc: "Within 24–48 hours after order confirmation" },
@@ -109,6 +117,12 @@ export default function ProductDetailInfoTabs(props: ProductDetailTabProps) {
   const tabContent = useMemo(() => buildTabContent(props), [props]);
   const panelId = `${baseId}-panel`;
   const rows = tabContent[active].rows;
+  const emptyMessage =
+    active === "details"
+      ? "The seller has not added extra product details yet."
+      : active === "fabric"
+        ? "The seller has not added fabric and care information yet."
+        : null;
 
   return (
     <div className="w-full min-w-0 max-w-full overflow-x-hidden pt-2">
@@ -149,7 +163,9 @@ export default function ProductDetailInfoTabs(props: ProductDetailTabProps) {
         aria-labelledby={`${baseId}-tab-${active}`}
         className="min-w-0 max-w-full overflow-x-hidden rounded-2xl border border-border/60 bg-card p-4 shadow-sm sm:p-5 md:p-6"
       >
-        {reduceMotion ? (
+        {rows.length === 0 && emptyMessage ? (
+          <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+        ) : reduceMotion ? (
           <SpecList rows={rows} />
         ) : (
           <AnimatePresence mode="wait" initial={false}>

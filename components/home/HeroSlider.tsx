@@ -81,8 +81,8 @@ export default function HeroSlider() {
             title="Featured collections aren’t available yet"
             description={
               loadState === "error"
-                ? "We couldn’t load the hero carousel. Please refresh the page, or try again in a moment."
-                : "When products are marked as featured in the catalog, they will appear here automatically."
+                ? "We couldn’t load the hero carousel. Check that the API is running, then refresh."
+                : "Add products in the seller dashboard and mark them as featured to show them here."
             }
           />
         </div>

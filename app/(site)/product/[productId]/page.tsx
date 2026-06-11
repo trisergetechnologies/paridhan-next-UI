@@ -42,6 +42,13 @@ type ProductDetailPayload = {
   color?: string;
   blouseIncluded?: boolean;
   length?: string;
+  occasion?: string;
+  pattern?: string;
+  fit?: string;
+  texture?: string;
+  washCare?: string;
+  ironing?: string;
+  storage?: string;
   discountPercentage?: number;
   categories?: { name?: string }[];
   images?: { url?: string }[];
@@ -505,7 +512,13 @@ export default function Product() {
             color={product.color}
             blouseIncluded={product.blouseIncluded}
             length={product.length}
-            categoryName={firstCategory}
+            occasion={product.occasion}
+            pattern={product.pattern}
+            fit={product.fit}
+            texture={product.texture}
+            washCare={product.washCare}
+            ironing={product.ironing}
+            storage={product.storage}
           />
         </div>
       </div>
