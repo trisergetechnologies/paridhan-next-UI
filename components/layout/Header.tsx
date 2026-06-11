@@ -59,6 +59,19 @@ export default function Header() {
     return () => window.removeEventListener("open-auth-modal", openAuth as EventListener);
   }, [pathname]);
 
+  const openAuthModal = useCallback(
+    (mode: "signin" | "signup") => {
+      const returnTo = `${pathname}${
+        typeof window !== "undefined" ? window.location.search : ""
+      }`;
+      setAuthMode(mode);
+      setAuthReturnTo(returnTo);
+      saveAuthReturnTo(returnTo);
+      setAuthOpen(true);
+    },
+    [pathname]
+  );
+
   useEffect(() => {
     setIsMobileOpen(false);
     setProfileOpen(false);
@@ -305,20 +318,11 @@ export default function Header() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => {
-                      setAuthMode("signin");
-                      setAuthOpen(true);
-                    }}
+                    onClick={() => openAuthModal("signin")}
                   >
                     Sign In
                   </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setAuthMode("signup");
-                      setAuthOpen(true);
-                    }}
-                  >
+                  <Button size="sm" onClick={() => openAuthModal("signup")}>
                     Sign Up
                   </Button>
                 </div>
@@ -418,8 +422,7 @@ export default function Header() {
                     variant="outline"
                     className="w-full"
                     onClick={() => {
-                      setAuthMode("signin");
-                      setAuthOpen(true);
+                      openAuthModal("signin");
                       setIsMobileOpen(false);
                     }}
                   >
@@ -428,8 +431,7 @@ export default function Header() {
                   <Button
                     className="w-full"
                     onClick={() => {
-                      setAuthMode("signup");
-                      setAuthOpen(true);
+                      openAuthModal("signup");
                       setIsMobileOpen(false);
                     }}
                   >

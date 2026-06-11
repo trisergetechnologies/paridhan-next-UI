@@ -21,12 +21,14 @@ export function consumeAuthReturnTo(): string | null {
   return stored;
 }
 
-/** Explicit returnTo → sessionStorage → current page (except OAuth callback). */
+/**
+ * Where to send the user after sign-in, resolved at the moment login starts.
+ * Priority: explicit (e.g. "/cart") → current page → "/".
+ * Stale sessionStorage is intentionally NOT used here; it is only the carrier
+ * across the Google redirect, consumed by the OAuth callback.
+ */
 export function resolveAuthReturnTo(explicit?: string | null): string {
   if (explicit && isSafeReturnPath(explicit)) return explicit;
-
-  const stored = peekAuthReturnTo();
-  if (stored) return stored;
 
   if (typeof window !== "undefined") {
     const { pathname, search } = window.location;

@@ -124,6 +124,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const cartRef = useRef<CartItem[]>([]);
   cartRef.current = cart;
   const mergingGuestRef = useRef(false);
+  const [hydrated, setHydrated] = useState(false);
   const [cartError, setCartError] = useState<string | null>(null);
   const [pricing, setPricing] = useState({
     itemsTotal: 0,
@@ -132,12 +133,15 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     grandTotal: 0,
   });
 
-  /* ================= PERSIST LOCAL CART ================= */
+  /* ================= PERSIST LOCAL CART =================
+     Only persist after hydration so we never overwrite a guest cart with the
+     empty initial state on first mount (this is what was wiping items). */
   useEffect(() => {
+    if (!hydrated) return;
     if (!isAuthenticated) {
       localStorage.setItem("cart", JSON.stringify(cart));
     }
-  }, [cart, isAuthenticated]);
+  }, [cart, isAuthenticated, hydrated]);
 
   /* ================= BACKEND FETCH ================= */
   const fetchCartFromBackend = useCallback(async () => {
@@ -235,9 +239,13 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
           setCart(JSON.parse(savedCart));
         } catch {
           localStorage.removeItem("cart");
+          setCart([]);
         }
+      } else {
+        setCart([]);
       }
     }
+    setHydrated(true);
   }, [isAuthenticated, user?.activeRole, mergeGuestCartAndFetch]);
 
   /* ================= ADD ================= */
