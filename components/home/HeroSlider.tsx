@@ -78,11 +78,11 @@ export default function HeroSlider() {
         <div className="mx-auto max-w-3xl px-4 py-16 sm:py-20">
           <EmptyState
             icon={ImageIcon}
-            title="Featured collections aren’t available yet"
+            title="Homepage banner isn’t available yet"
             description={
               loadState === "error"
-                ? "We couldn’t load the hero carousel. Check that the API is running, then refresh."
-                : "Add products in the seller dashboard and mark them as featured to show them here."
+                ? "We couldn’t load the homepage banner. Check that the API is running, then refresh."
+                : "Configure the homepage banner in admin Settings → Website."
             }
           />
         </div>
