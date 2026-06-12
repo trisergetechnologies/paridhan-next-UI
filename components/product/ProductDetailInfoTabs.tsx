@@ -114,7 +114,23 @@ export default function ProductDetailInfoTabs(props: ProductDetailTabProps) {
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<TabId>("details");
 
-  const tabContent = useMemo(() => buildTabContent(props), [props]);
+  const tabContent = useMemo(
+    () => buildTabContent(props),
+    [
+      props.fabric,
+      props.color,
+      props.blouseIncluded,
+      props.length,
+      props.occasion,
+      props.pattern,
+      props.fit,
+      props.texture,
+      props.washCare,
+      props.ironing,
+      props.storage,
+      props.sellerName,
+    ],
+  );
   const panelId = `${baseId}-panel`;
   const rows = tabContent[active].rows;
   const emptyMessage =

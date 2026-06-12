@@ -88,7 +88,10 @@ export default function Product() {
     setLoading(true);
     setProduct(null);
     axios
-      .get(`${getBrowserApiBase()}/public/products/single/${productId}`)
+      .get(`${getBrowserApiBase()}/public/products/single/${productId}`, {
+        params: { _: Date.now() },
+        headers: { "Cache-Control": "no-cache" },
+      })
       .then((res) => setProduct(res.data.data as ProductDetailPayload))
       .catch(() => setProduct(null))
       .finally(() => setLoading(false));
