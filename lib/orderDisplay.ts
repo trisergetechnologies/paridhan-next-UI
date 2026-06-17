@@ -111,3 +111,46 @@ export function paymentMethodLabel(method: string | undefined): string {
   if (m === "online") return "Paid online";
   return method || "—";
 }
+
+export type PaymentStatusKey =
+  | "pending"
+  | "paid"
+  | "failed"
+  | "refund_pending"
+  | "refunded";
+
+export function paymentStatusLabel(status: string | undefined): string {
+  const s = String(status || "").toLowerCase();
+  const map: Record<string, string> = {
+    pending: "Pending",
+    paid: "Paid",
+    failed: "Failed",
+    refund_pending: "Refund processing",
+    refunded: "Refunded",
+  };
+  return map[s] || status || "—";
+}
+
+export type ReturnStatusKey =
+  | "requested"
+  | "approved"
+  | "pickup_scheduled"
+  | "in_transit"
+  | "received"
+  | "inspected"
+  | "refunded"
+  | "rejected";
+
+export function returnStatusLabel(status: ReturnStatusKey | string): string {
+  const map: Record<string, string> = {
+    requested: "Requested",
+    approved: "Approved",
+    pickup_scheduled: "Pickup scheduled",
+    in_transit: "In transit",
+    received: "Received at warehouse",
+    inspected: "Inspected",
+    refunded: "Refunded",
+    rejected: "Rejected",
+  };
+  return map[String(status)] || String(status);
+}

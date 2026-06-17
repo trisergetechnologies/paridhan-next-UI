@@ -11,9 +11,13 @@ import {
   orderStatusLabel,
   ORDER_TIMELINE_STEPS,
   paymentMethodLabel,
+  paymentStatusLabel,
+  returnStatusLabel,
 } from "@/lib/orderDisplay";
 import { cn } from "@/lib/utils";
 import { OrderItemProductTitle } from "@/components/orders/OrderItemProductTitle";
+import { CancelOrderDialog } from "@/components/orders/CancelOrderDialog";
+import { ReturnOrderDialog } from "@/components/orders/ReturnOrderDialog";
 import {
   ArrowLeft,
   CheckCircle,
@@ -23,6 +27,7 @@ import {
   Loader2,
   Package,
   RotateCcw,
+  XCircle,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -36,6 +41,14 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [eligibility, setEligibility] = useState<{
+    cancel?: { eligible: boolean; reason?: string };
+    return?: { eligible: boolean; reason?: string };
+  } | null>(null);
+  const [returns, setReturns] = useState<any[]>([]);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [returnOpen, setReturnOpen] = useState(false);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   const fetchOrder = useCallback(async () => {
     if (!orderId || !isAuthenticated) {
@@ -56,6 +69,23 @@ export default function OrderDetailPage() {
         return;
       }
       setOrder(json.data);
+
+      const [eligRes, returnsRes] = await Promise.all([
+        authFetch(`${getBrowserApiBase()}/customer/order/${orderId}/eligibility`),
+        authFetch(`${getBrowserApiBase()}/customer/returns?limit=20`),
+      ]);
+      const eligJson = await eligRes.json().catch(() => ({}));
+      if (eligJson.success && eligJson.data) {
+        setEligibility(eligJson.data);
+      }
+      const returnsJson = await returnsRes.json().catch(() => ({}));
+      if (returnsJson.success && returnsJson.data?.items) {
+        setReturns(
+          returnsJson.data.items.filter(
+            (r: any) => String(r.order?._id || r.order) === String(orderId)
+          )
+        );
+      }
     } catch {
       setError("Could not load this order.");
       setOrder(null);
@@ -163,19 +193,60 @@ export default function OrderDetailPage() {
 
       <div className="container mx-auto max-w-6xl px-4 py-8 md:py-10 space-y-8 md:space-y-10">
         <section className="flex flex-wrap gap-3">
+          {eligibility?.cancel?.eligible ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-destructive/40 text-destructive hover:bg-destructive/10"
+              onClick={() => setCancelOpen(true)}
+            >
+              <XCircle className="h-4 w-4 mr-2" />
+              Cancel order
+            </Button>
+          ) : null}
+          {eligibility?.return?.eligible ? (
+            <Button size="sm" variant="outline" className="border-primary/30" onClick={() => setReturnOpen(true)}>
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Request return
+            </Button>
+          ) : null}
           <Button size="sm" variant="outline" className="border-primary/30">
             <Download className="h-4 w-4 mr-2" />
             Invoice
-          </Button>
-          <Button size="sm" variant="outline" className="border-primary/30">
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Reorder
           </Button>
           <Button size="sm" variant="ghost">
             <HelpCircle className="h-4 w-4 mr-2" />
             Help
           </Button>
         </section>
+
+        {actionMessage ? (
+          <p className="text-sm text-primary rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+            {actionMessage}
+          </p>
+        ) : null}
+
+        {returns.length > 0 ? (
+          <section className="rounded-2xl border border-border/80 bg-card p-6 shadow-sm space-y-4">
+            <h2 className="font-serif text-lg font-semibold text-foreground">Return requests</h2>
+            {returns.map((ret) => (
+              <div
+                key={ret._id}
+                className="rounded-xl border border-border/60 p-4 text-sm space-y-1"
+              >
+                <p className="font-medium">{ret.returnNumber}</p>
+                <p className="text-muted-foreground">{ret.reason}</p>
+                <p>
+                  Status:{" "}
+                  <span className="font-medium capitalize">{returnStatusLabel(ret.status)}</span>
+                </p>
+                {ret.shipping?.reverseAwb ? (
+                  <p className="text-muted-foreground">Return AWB: {ret.shipping.reverseAwb}</p>
+                ) : null}
+              </div>
+            ))}
+          </section>
+        ) : null}
 
         <section className="rounded-2xl border border-border/80 bg-card p-6 shadow-sm">
           <h2 className="font-serif text-lg font-semibold mb-6 text-foreground">
@@ -184,8 +255,12 @@ export default function OrderDetailPage() {
 
           {status === "cancelled" ? (
             <p className="text-sm text-muted-foreground">
-              This order has been cancelled. If you have questions, use{" "}
-              <span className="font-medium text-foreground">Help</span> above.
+              This order has been cancelled.
+              {order.paymentStatus === "refund_pending"
+                ? " Your refund will be processed within 5–7 business days."
+                : order.paymentStatus === "refunded"
+                  ? " Refund has been processed."
+                  : null}
             </p>
           ) : (
             <div className="space-y-2">
@@ -348,15 +423,49 @@ export default function OrderDetailPage() {
             <p className="text-sm text-muted-foreground pt-2">
               {paymentMethodLabel(order.paymentMethod)}
               {order.paymentStatus ? (
-                <span className="capitalize">
-                  {" "}
-                  · {order.paymentStatus}
-                </span>
+                <span> · {paymentStatusLabel(order.paymentStatus)}</span>
               ) : null}
             </p>
+            {order.shipping?.awb ? (
+              <p className="text-sm text-muted-foreground">
+                Tracking:{" "}
+                {order.shipping.trackingUrl ? (
+                  <a
+                    href={order.shipping.trackingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    {order.shipping.awb}
+                  </a>
+                ) : (
+                  order.shipping.awb
+                )}
+                {order.shipping.courierName ? ` (${order.shipping.courierName})` : ""}
+              </p>
+            ) : null}
           </section>
         </div>
       </div>
+
+      <CancelOrderDialog
+        orderId={String(orderId)}
+        open={cancelOpen}
+        onOpenChange={setCancelOpen}
+        onSuccess={() => {
+          setActionMessage("Order cancelled successfully.");
+          void fetchOrder();
+        }}
+      />
+      <ReturnOrderDialog
+        orderId={String(orderId)}
+        open={returnOpen}
+        onOpenChange={setReturnOpen}
+        onSuccess={() => {
+          setActionMessage("Return request submitted. We will review it shortly.");
+          void fetchOrder();
+        }}
+      />
     </div>
   );
 }
